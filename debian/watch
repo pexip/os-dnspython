@@ -1,0 +1,2 @@
+version=3
+http://www.dnspython.org/kits/([0-9.]+)/dnspython-([0-9.]+)\.tar\.gz
