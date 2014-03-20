@@ -1,3 +1,9 @@
+dnspython (1.11.1-1pexip1) pexip; urgency=low
+
+  * Prepare Pexip packaging
+
+ -- John-Mark Bell <jmb@pexip.com>  Thu, 20 Mar 2014 00:03:11 +0000
+
 dnspython (1.11.1-1) unstable; urgency=low
 
   * New upstream release
