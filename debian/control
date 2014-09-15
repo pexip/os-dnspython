@@ -3,7 +3,7 @@ Section: python
 Priority: optional
 Maintainer: Debian Python Modules Team <python-modules-team@lists.alioth.debian.org>
 Uploaders: Robert S. Edmonds <edmonds@debian.org>, Scott Kitterman <scott@kitterman.com>
-Build-Depends: debhelper (>= 8.1~), python-all (>= 2.6.6-3~)
+Build-Depends: debhelper (>= 8.1~), python-all (>= 2.6.6-3~), dh-python
 Homepage: http://www.dnspython.org
 Standards-Version: 3.9.5
 Vcs-Svn: svn://anonscm.debian.org/python-modules/packages/dnspython/trunk/
