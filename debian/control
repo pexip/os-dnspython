@@ -2,12 +2,13 @@ Source: dnspython
 Section: python
 Priority: optional
 Maintainer: Debian Python Modules Team <python-modules-team@lists.alioth.debian.org>
-Uploaders: Robert S. Edmonds <edmonds@debian.org>, Scott Kitterman <scott@kitterman.com>
-Build-Depends: debhelper (>= 8.1~), python-all (>= 2.6.6-3~), dh-python
+Uploaders: Robert S. Edmonds <edmonds@debian.org>, Scott Kitterman <scott@kitterman.com>, Matthew Grant <matthewgrant5@gmail.com>
+Build-Depends: debhelper (>= 9~), python-all (>= 2.6.6-3~), python-setuptools, python3-all (>= 3.3), python3-setuptools, dh-python, netbase
+X-Python3-Version: >= 3.3
 Homepage: http://www.dnspython.org
-Standards-Version: 3.9.5
-Vcs-Svn: svn://anonscm.debian.org/python-modules/packages/dnspython/trunk/
-Vcs-Browser: http://anonscm.debian.org/viewvc/python-modules/packages/dnspython/trunk/
+Standards-Version: 3.9.8
+Vcs-Git: https://anonscm.debian.org/git/python-modules/packages/dnspython.git
+Vcs-Browser: https://anonscm.debian.org/cgit/python-modules/packages/dnspython.git
 
 Package: python-dnspython
 Architecture: all
@@ -21,3 +22,18 @@ Description: DNS toolkit for Python
  classes perform queries for data of a given name, type, and class, and return
  an answer set. The low level classes allow direct manipulation of DNS zones,
  messages, names, and records.
+
+Package: python3-dnspython
+Architecture: all
+Depends: ${python3:Depends}, ${misc:Depends}
+Description: DNS toolkit for Python 3
+ dnspython is a DNS toolkit for Python. It supports almost all record types. It
+ can be used for queries, zone transfers, and dynamic updates. It supports TSIG
+ authenticated messages and EDNS0.
+ .
+ dnspython provides both high and low level access to DNS. The high level
+ classes perform queries for data of a given name, type, and class, and return
+ an answer set. The low level classes allow direct manipulation of DNS zones,
+ messages, names, and records.
+ .
+ This is the Python 3 version.

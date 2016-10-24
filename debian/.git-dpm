@@ -1,0 +1,11 @@
+# see git-dpm(1) from git-dpm package
+0d1947c117c43af0498ff5563d7acfed903e9bfa
+0d1947c117c43af0498ff5563d7acfed903e9bfa
+131bfc40a93a1cd64c3a1bccbe3391608733a8dd
+131bfc40a93a1cd64c3a1bccbe3391608733a8dd
+dnspython_1.15.0.orig.tar.gz
+fcb8edb4b307f68a27cd356e7b44f53512b63b5e
+144073
+debianTag="debian/%e%v"
+patchedTag="patched/%e%v"
+upstreamTag="upstream/%e%u"

@@ -16,6 +16,8 @@
 # If this weren't a demo script, there'd be a way of specifying the
 # origin for each zone instead of constructing it from the filename.
 
+from __future__ import print_function
+
 import dns.zone
 import dns.ipv4
 import os.path
@@ -28,13 +30,13 @@ for filename in sys.argv[1:]:
                               relativize=False)
     for (name, ttl, rdata) in zone.iterate_rdatas('A'):
         try:
-	    reverse_map[rdata.address].append(name.to_text())
-	except KeyError:
-	    reverse_map[rdata.address] = [name.to_text()]
+            reverse_map[rdata.address].append(name.to_text())
+        except KeyError:
+            reverse_map[rdata.address] = [name.to_text()]
 
 keys = reverse_map.keys()
-keys.sort(lambda a1, a2: cmp(dns.ipv4.inet_aton(a1), dns.ipv4.inet_aton(a2)))
+keys.sort(key=dns.ipv4.inet_aton)
 for k in keys:
     v = reverse_map[k]
     v.sort()
-    print k, v
+    print(k, v)

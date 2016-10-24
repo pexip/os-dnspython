@@ -13,7 +13,11 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
 # OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
+import binascii
 
 import dns.update
 import dns.rdata
@@ -34,9 +38,9 @@ goodhex = '0001 2800 0001 0005 0007 0000' \
           '04626c617ac00c 0001 00ff 00000000 0000' \
           'c049 00ff 00ff 00000000 0000'
 
-goodwire = goodhex.replace(' ', '').decode('hex_codec')
+goodwire = binascii.unhexlify(goodhex.replace(' ', '').encode())
 
-update_text="""id 1
+update_text = """id 1
 opcode UPDATE
 rcode NOERROR
 ;ZONE
@@ -70,7 +74,7 @@ class UpdateTestCase(unittest.TestCase):
         update.replace('foo', 300, 'a', '10.0.0.1', '10.0.0.2')
         update.add('bar', 300, 'a', '10.0.0.3')
         update.delete('bar', 'a', '10.0.0.4')
-        update.delete('blaz','a')
+        update.delete('blaz', 'a')
         update.delete('blaz2')
         self.failUnless(update.to_wire() == goodwire)
 
@@ -85,7 +89,7 @@ class UpdateTestCase(unittest.TestCase):
         update.replace('foo', 300, 'a', '10.0.0.1', '10.0.0.2')
         update.add('bar', 300, dns.rdata.from_text(1, 1, '10.0.0.3'))
         update.delete('bar', 'a', '10.0.0.4')
-        update.delete('blaz','a')
+        update.delete('blaz', 'a')
         update.delete('blaz2')
         self.failUnless(update.to_wire() == goodwire)
 
@@ -100,7 +104,7 @@ class UpdateTestCase(unittest.TestCase):
         update.replace('foo', 300, 'a', '10.0.0.1', '10.0.0.2')
         update.add('bar', dns.rdataset.from_text(1, 1, 300, '10.0.0.3'))
         update.delete('bar', 'a', '10.0.0.4')
-        update.delete('blaz','a')
+        update.delete('blaz', 'a')
         update.delete('blaz2')
         self.failUnless(update.to_wire() == goodwire)
 
