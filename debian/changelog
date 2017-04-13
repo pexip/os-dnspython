@@ -1,3 +1,16 @@
+dnspython (1.12.0-1pexip1) pexip; urgency=low
+
+  * New upstream release
+
+ -- John-Mark Bell <jmb@pexip.com>  Thu, 13 Apr 2017 18:39:51 +0100
+
+dnspython (1.12.0-1) unstable; urgency=medium
+
+  * New upstream release
+  * Add explicit build-dep on dh-python to make use of the newer version
+
+ -- Scott Kitterman <scott@kitterman.com>  Sun, 14 Sep 2014 22:46:43 -0400
+
 dnspython (1.11.1-1pexip1) pexip; urgency=low
 
   * Prepare Pexip packaging
