@@ -1,3 +1,10 @@
+dnspython (1.12.0-1pexip2) pexip; urgency=low
+
+  * Patch to skip answer processing if TC flag set. 
+    Fix for https://github.com/rthalley/dnspython/issues/284
+
+ -- Alan Ford <alan@pexip.com>  Thu, 19 Oct 2017 11:16:59 +0100
+
 dnspython (1.12.0-1pexip1) pexip; urgency=low
 
   * New upstream release
