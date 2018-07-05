@@ -9,7 +9,7 @@ Homepage: http://www.dnspython.org
 Standards-Version: 3.9.5
 Vcs-Svn: svn://anonscm.debian.org/python-modules/packages/dnspython/trunk/
 Vcs-Browser: http://anonscm.debian.org/viewvc/python-modules/packages/dnspython/trunk/
-XS-Pexip-Upstream: http://ftp.debian.org/debian/ jessie
+XS-Pexip-Upstream: http://ftp.debian.org/debian/ stretch
 
 Package: python-dnspython
 Architecture: all
