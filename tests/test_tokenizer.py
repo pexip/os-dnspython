@@ -13,7 +13,10 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
 # OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 import dns.exception
 import dns.tokenizer
@@ -21,6 +24,16 @@ import dns.tokenizer
 Token = dns.tokenizer.Token
 
 class TokenizerTestCase(unittest.TestCase):
+
+    def testStr(self):
+        tok = dns.tokenizer.Tokenizer('foo')
+        token = tok.get()
+        self.failUnless(token == Token(dns.tokenizer.IDENTIFIER, 'foo'))
+
+    def testUnicode(self):
+        tok = dns.tokenizer.Tokenizer(u'foo')
+        token = tok.get()
+        self.failUnless(token == Token(dns.tokenizer.IDENTIFIER, 'foo'))
 
     def testQuotedString1(self):
         tok = dns.tokenizer.Tokenizer(r'"foo"')
@@ -45,19 +58,19 @@ class TokenizerTestCase(unittest.TestCase):
     def testQuotedString5(self):
         def bad():
             tok = dns.tokenizer.Tokenizer(r'"foo')
-            token = tok.get()
+            tok.get()
         self.failUnlessRaises(dns.exception.UnexpectedEnd, bad)
 
     def testQuotedString6(self):
         def bad():
             tok = dns.tokenizer.Tokenizer(r'"foo\01')
-            token = tok.get()
+            tok.get()
         self.failUnlessRaises(dns.exception.SyntaxError, bad)
 
     def testQuotedString7(self):
         def bad():
             tok = dns.tokenizer.Tokenizer('"foo\nbar"')
-            token = tok.get()
+            tok.get()
         self.failUnlessRaises(dns.exception.SyntaxError, bad)
 
     def testEmpty1(self):
@@ -94,14 +107,14 @@ class TokenizerTestCase(unittest.TestCase):
 
     def testComment2(self):
         tok = dns.tokenizer.Tokenizer(' ;foo\n')
-        token1 = tok.get(want_comment = True)
+        token1 = tok.get(want_comment=True)
         token2 = tok.get()
         self.failUnless(token1 == Token(dns.tokenizer.COMMENT, 'foo') and
                         token2.is_eol())
 
     def testComment3(self):
         tok = dns.tokenizer.Tokenizer(' ;foo bar\n')
-        token1 = tok.get(want_comment = True)
+        token1 = tok.get(want_comment=True)
         token2 = tok.get()
         self.failUnless(token1 == Token(dns.tokenizer.COMMENT, 'foo bar') and
                         token2.is_eol())
@@ -121,13 +134,13 @@ class TokenizerTestCase(unittest.TestCase):
     def testMultiline3(self):
         def bad():
             tok = dns.tokenizer.Tokenizer('foo)')
-            tokens = list(iter(tok))
+            list(iter(tok))
         self.failUnlessRaises(dns.exception.SyntaxError, bad)
 
     def testMultiline4(self):
         def bad():
             tok = dns.tokenizer.Tokenizer('((foo)')
-            tokens = list(iter(tok))
+            list(iter(tok))
         self.failUnlessRaises(dns.exception.SyntaxError, bad)
 
     def testUnget1(self):
