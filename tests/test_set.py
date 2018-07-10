@@ -13,7 +13,10 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
 # OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 import dns.set
 
@@ -21,7 +24,7 @@ import dns.set
 S = dns.set.Set
 
 class SimpleSetTestCase(unittest.TestCase):
-        
+
     def testLen1(self):
         s1 = S()
         self.failUnless(len(s1) == 0)

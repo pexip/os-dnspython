@@ -1,3 +1,97 @@
+2016-09-29  Bob Halley  <halley@dnspython.org>
+
+	* IDNA 2008 support is now available if the "idna" module has been
+	  installed and IDNA 2008 is requested.  The default IDNA behavior
+	  is still IDNA 2003.  The new IDNA codec mechanism is currently
+	  only useful for direct calls to dns.name.from_text() or
+	  dns.name.from_unicode(), but in future releases it will be
+	  deployed throughout dnspython, e.g. so that you can read a
+	  masterfile with an IDNA 2008 codec in force.
+
+	* By default, dns.name.to_unicode() is not strict about which
+	  version of IDNA the input complies with.  Strictness can be
+	  requested by using one of the strict IDNA codecs.
+
+	* Add AVC RR support.
+
+	* Some problems with newlines in various output modes have been
+	  addressed.
+
+	* dns.name.to_text() now returns text and not bytes on Python 3.x
+
+	* More miscellaneous fixes for the Python 2/3 codeline merge.
+
+2016-05-27  Bob Halley  <halley@dnspython.org>
+
+	* (Version 1.14.0 released)
+
+	* Add CSYNC RR support
+
+	* Fix bug in LOC which destroyed N/S and E/W distinctions within
+	  a degree of the equator or prime merdian respectively.
+
+	* Misc. fixes to deal with fallout from the Python 2 & 3 merge.
+	  [issue #156], [issue #157], [issue #158], [issue #159],
+	  [issue #160].
+
+	* Running with python optimization on caused issues when
+	  stripped docstrings were referenced. [issue #154]
+
+	* dns.zone.from_text() erroneously required the zone to be provided.
+	  [issue #153]
+
+2016-05-13  Bob Halley  <halley@dnspython.org>
+
+	* dns/message.py (make_query): Setting any value which implies
+	  EDNS will turn on EDNS if 'use_edns' has not been specified.
+
+2016-05-12  Bob Halley  <halley@dnspython.org>
+
+	* TSIG signature algorithm setting was broken by the Python 2
+	  and Python 3 code line merge.  Fixed.
+
+2016-05-10  Bob Halley  <halley@dnspython.org>
+
+	* (Version 1.13.0 released)
+
+2016-05-10  Bob Halley  <halley@dnspython.org>
+
+	* Dropped support for Python 2.4 and 2.5.
+
+	* Zone origin can be specified as a string.
+
+	* Support string representation for all DNSExceptions.
+
+	* Use setuptools not distutils
+
+	* A number of Unicode name bug fixes.
+
+	* Added support for CAA, CDS, CDNSKEY, EUI48, EUI64, and URI RR
+	  types.
+
+	* Names now support the pickle protocol.
+
+	* NameDicts now keep the max-depth value correct, and update
+	  properly.
+
+	* resolv.conf processing rejects lines with too few tokens.
+
+	* Ports can be specified per-nameserver in the stub resolver.
+
+2016-05-03  Arthur Gautier
+
+        * Single source support for python 2.6+ and 3.3+
+
+2014-09-04  Bob Halley  <halley@dnspython.org>
+
+	* Comparing two rdata is now always done by comparing the binary
+	  data of the DNSSEC digestable forms.  This corrects a number of
+	  errors where dnspython's rdata comparison order was not the
+	  DNSSEC order.
+
+	* Add CAA implementation.  Thanks to Brian Wellington for the
+	  patch.
+
 2014-09-01  Bob Halley  <halley@dnspython.org>
 
 	* (Version 1.12.0 released)
@@ -874,7 +968,7 @@
 2003-11-13  Bob Halley  <halley@dnspython.org>
 
         * dns/rdtypes/ANY/LOC.py (LOC.to_wire): We encoded and decoded LOC
-        incorrectly, since we were interpreting the values of altitiude,
+        incorrectly, since we were interpreting the values of altitude,
         size, hprec, and vprec in meters instead of centimeters.
 
         * dns/rdtypes/IN/WKS.py (WKS.from_wire): The WKS protocol value is
@@ -1158,7 +1252,7 @@
 
                 bar.foo 300 IN MX 0 blaz.foo
 
-        after the second step (relativiation to zone origin).
+        after the second step (relativization to zone origin).
 
         * dns/namedict.py: added.
 
@@ -1179,7 +1273,7 @@
         * dns/renderer.py: added new wire format rendering module and
         converted message.py to use it.  Applications which want
         fine-grained control over the conversion to wire format may call
-        the renderer directy, instead of having it called on their behalf
+        the renderer directly, instead of having it called on their behalf
         by the message code.
 
 2003-07-02  Bob Halley  <halley@dnspython.org>

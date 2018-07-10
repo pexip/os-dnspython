@@ -1,3 +1,76 @@
+dnspython (1.15.0-1pexip1) pexip; urgency=low
+
+  * Migrate to Stretch
+
+ -- John-Mark Bell <jmb@pexip.com>  Tue, 10 Jul 2018 18:34:15 +0100
+
+dnspython (1.15.0-1) unstable; urgency=medium
+
+  * New upstream release
+  * Fix file write location in testToFileFilename.
+    - Add debian/patches/0001-Fix-file-write-location-in-testToFileFilename
+      .patch
+  * Bump compat/debhelper version to 9 due to compat levels < 9 being
+    deprecated
+
+ -- Scott Kitterman <scott@kitterman.com>  Mon, 24 Oct 2016 08:00:17 -0400
+
+dnspython (1.14.0-3) unstable; urgency=medium
+
+  * Drop http_proxy (problem is DNS traffic on port 53)
+  * Disable tests unless manually enabled to avoid network access during
+    build (Closes: #830170)
+
+ -- Scott Kitterman <scott@kitterman.com>  Fri, 15 Jul 2016 01:17:53 -0400
+
+dnspython (1.14.0-2) unstable; urgency=medium
+
+  * Update python3-dnspython description synopsis
+  * Add http_proxy in debian/rules so network access is not attempted - Policy
+    4.9, added in 3.9.7 (Closes: #830170)
+
+ -- Scott Kitterman <scott@kitterman.com>  Thu, 07 Jul 2016 17:04:28 -0400
+
+dnspython (1.14.0-1) unstable; urgency=medium
+
+  * Add patch in tests/test_resolver.py to check if the Internet is reachable
+    and to skip tests that require it if it is not
+  * New upstream release
+  * Update debian/copyright
+
+ -- Scott Kitterman <scott@kitterman.com>  Sat, 28 May 2016 13:10:13 -0400
+
+dnspython (1.13.0-2) unstable; urgency=medium
+
+  * Revert disabling of zone tests
+  * Add netbase to build-depends to provide /etc/protocols so zone tests will
+    work
+
+ -- Scott Kitterman <scott@kitterman.com>  Wed, 25 May 2016 11:11:52 -0400
+
+dnspython (1.13.0-1) unstable; urgency=medium
+
+  [ Ondřej Nový ]
+  * Fixed VCS URL (https)
+
+  [ Scott Kitterman ]
+  * New upstream release (Closes: #823456)
+    - Bump minimum python3 version to 3.3
+    - Add python/python3-setuptools to build-depends
+    - Delete obsolete debian/docs file
+  * Build python3-dnspython for dnspython source instead of from dedicated
+    dnspython3 source
+    - Add Matthew Grant to dnspython uploaders
+    - Migrate python3 related dnspython3 entries for debian/control
+    - Update debian/rules to use dh_python3 and pybuild
+    - Set PYBUILD_NAME=dnspython in debian/rules
+    - Use binary specific examples files for multi-binary package
+  * Bump standards version to 3.9.8 without further change
+  * Delete obsolete debian/source/options file
+  * Temporarily disable non-working zone tests.
+
+ -- Scott Kitterman <scott@kitterman.com>  Wed, 25 May 2016 02:13:01 -0400
+
 dnspython (1.12.0-1pexip2) pexip; urgency=low
 
   * Patch to skip answer processing if TC flag set. 

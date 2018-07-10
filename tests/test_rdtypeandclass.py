@@ -13,7 +13,10 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
 # OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 import dns.rdataclass
 import dns.rdatatype
@@ -21,7 +24,7 @@ import dns.rdatatype
 class RdTypeAndClassTestCase(unittest.TestCase):
 
     # Classes
-    
+
     def test_class_meta1(self):
         self.failUnless(dns.rdataclass.is_metaclass(dns.rdataclass.ANY))
 
@@ -41,32 +44,32 @@ class RdTypeAndClassTestCase(unittest.TestCase):
 
     def test_class_bytext_bounds2(self):
         def bad():
-            junk = dns.rdataclass.from_text('CLASS65536')
+            dns.rdataclass.from_text('CLASS65536')
         self.failUnlessRaises(ValueError, bad)
 
     def test_class_bytext_unknown(self):
         def bad():
-            junk = dns.rdataclass.from_text('XXX')
+            dns.rdataclass.from_text('XXX')
         self.failUnlessRaises(dns.rdataclass.UnknownRdataclass, bad)
 
     def test_class_totext1(self):
         self.failUnless(dns.rdataclass.to_text(dns.rdataclass.IN) == 'IN')
 
-    def test_class_totext1(self):
+    def test_class_totext2(self):
         self.failUnless(dns.rdataclass.to_text(999) == 'CLASS999')
 
     def test_class_totext_bounds1(self):
         def bad():
-            junk = dns.rdataclass.to_text(-1)
+            dns.rdataclass.to_text(-1)
         self.failUnlessRaises(ValueError, bad)
 
     def test_class_totext_bounds2(self):
         def bad():
-            junk = dns.rdataclass.to_text(65536)
+            dns.rdataclass.to_text(65536)
         self.failUnlessRaises(ValueError, bad)
 
     # Types
-    
+
     def test_type_meta1(self):
         self.failUnless(dns.rdatatype.is_metatype(dns.rdatatype.ANY))
 
@@ -95,28 +98,28 @@ class RdTypeAndClassTestCase(unittest.TestCase):
 
     def test_type_bytext_bounds2(self):
         def bad():
-            junk = dns.rdatatype.from_text('TYPE65536')
+            dns.rdatatype.from_text('TYPE65536')
         self.failUnlessRaises(ValueError, bad)
 
     def test_type_bytext_unknown(self):
         def bad():
-            junk = dns.rdatatype.from_text('XXX')
+            dns.rdatatype.from_text('XXX')
         self.failUnlessRaises(dns.rdatatype.UnknownRdatatype, bad)
 
     def test_type_totext1(self):
         self.failUnless(dns.rdatatype.to_text(dns.rdatatype.A) == 'A')
 
-    def test_type_totext1(self):
+    def test_type_totext2(self):
         self.failUnless(dns.rdatatype.to_text(999) == 'TYPE999')
 
     def test_type_totext_bounds1(self):
         def bad():
-            junk = dns.rdatatype.to_text(-1)
+            dns.rdatatype.to_text(-1)
         self.failUnlessRaises(ValueError, bad)
 
     def test_type_totext_bounds2(self):
         def bad():
-            junk = dns.rdatatype.to_text(65536)
+            dns.rdatatype.to_text(65536)
         self.failUnlessRaises(ValueError, bad)
 
 if __name__ == '__main__':
