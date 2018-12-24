@@ -1,1 +1,2 @@
 0001-Fix-file-write-location-in-testToFileFilename.patch
+0002-fix-error-when-parsing-nsec3-bitmap-from-text.patch

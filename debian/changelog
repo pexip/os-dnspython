@@ -1,3 +1,10 @@
+dnspython (1.15.0-1+deb9u1) stretch; urgency=medium
+
+  * Add debian/patches/0002-fix-error-when-parsing-nsec3-bitmap-from-
+    text.patch from upstream (Closes: #915866)
+
+ -- Scott Kitterman <scott@kitterman.com>  Mon, 24 Dec 2018 15:20:36 -0500
+
 dnspython (1.15.0-1) unstable; urgency=medium
 
   * New upstream release
