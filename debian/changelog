@@ -1,3 +1,16 @@
+dnspython (1.15.0-1+deb9u1pexip1) pexip; urgency=low
+
+  * New Upstream
+
+ -- Vincent Sanders <vince@pexip.com>  Wed, 13 Mar 2019 11:57:45 +0000
+
+dnspython (1.15.0-1+deb9u1) stretch; urgency=medium
+
+  * Add debian/patches/0002-fix-error-when-parsing-nsec3-bitmap-from-
+    text.patch from upstream (Closes: #915866)
+
+ -- Scott Kitterman <scott@kitterman.com>  Mon, 24 Dec 2018 15:20:36 -0500
+
 dnspython (1.15.0-1pexip1) pexip; urgency=low
 
   * Migrate to Stretch
