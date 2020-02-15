@@ -1,3 +1,5 @@
+# Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license
+
 # Copyright (C) 2003-2007, 2009-2011 Nominum, Inc.
 #
 # Permission to use, copy, modify, and distribute this software and its
@@ -13,15 +15,15 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
 # OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 import binascii
 
 import dns.exception
 import dns.flags
 import dns.message
+import dns.name
+import dns.rdataclass
+import dns.rdatatype
 from dns._compat import xrange
 
 query_text = """id 1234
@@ -198,6 +200,14 @@ class MessageTestCase(unittest.TestCase):
     def test_SettingOptionsImpliesEDNS(self):
         m = dns.message.make_query('foo', 'A', options=[])
         self.failUnless(m.edns == 0)
+
+    def test_FindRRset(self):
+        a = dns.message.from_text(answer_text)
+        n = dns.name.from_text('dnspython.org.')
+        rrs1 = a.find_rrset(a.answer, n, dns.rdataclass.IN, dns.rdatatype.SOA)
+        rrs2 = a.find_rrset(dns.message.ANSWER, n, dns.rdataclass.IN,
+                            dns.rdatatype.SOA)
+        self.failUnless(rrs1 == rrs2)
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,3 +1,5 @@
+# Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license
+
 # Copyright (C) 2003-2007, 2009-2011 Nominum, Inc.
 #
 # Permission to use, copy, modify, and distribute this software and its
@@ -15,15 +17,13 @@
 
 from __future__ import print_function
 
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 import binascii
 
 import dns.exception
 import dns.ipv4
 import dns.ipv6
+import dns.inet
 
 # for convenience
 aton4 = dns.ipv4.inet_aton
@@ -170,9 +170,9 @@ class NtoAAtoNTestCase(unittest.TestCase):
         self.failUnlessRaises(ValueError, bad)
 
     def test_good_v4_aton(self):
-        pairs = [(b'1.2.3.4', b'\x01\x02\x03\x04'),
-                 (b'255.255.255.255', b'\xff\xff\xff\xff'),
-                 (b'0.0.0.0', b'\x00\x00\x00\x00')]
+        pairs = [('1.2.3.4', b'\x01\x02\x03\x04'),
+                 ('255.255.255.255', b'\xff\xff\xff\xff'),
+                 ('0.0.0.0', b'\x00\x00\x00\x00')]
         for (t, b) in pairs:
             b1 = aton4(t)
             t1 = ntoa4(b1)
@@ -213,6 +213,20 @@ class NtoAAtoNTestCase(unittest.TestCase):
         self.failIf(dns.ipv6.is_mapped(aton6(t1)))
         self.failUnless(dns.ipv6.is_mapped(aton6(t2)))
         self.failIf(dns.ipv6.is_mapped(aton6(t3)))
+
+    def test_is_multicast(self):
+        t1 = '223.0.0.1'
+        t2 = '240.0.0.1'
+        t3 = '224.0.0.1'
+        t4 = '239.0.0.1'
+        t5 = 'fe00::1'
+        t6 = 'ff00::1'
+        self.failIf(dns.inet.is_multicast(t1))
+        self.failIf(dns.inet.is_multicast(t2))
+        self.failUnless(dns.inet.is_multicast(t3))
+        self.failUnless(dns.inet.is_multicast(t4))
+        self.failIf(dns.inet.is_multicast(t5))
+        self.failUnless(dns.inet.is_multicast(t6))
 
 if __name__ == '__main__':
     unittest.main()

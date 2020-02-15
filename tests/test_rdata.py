@@ -1,3 +1,5 @@
+# Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license
+
 # Copyright (C) 2006, 2007, 2009-2011 Nominum, Inc.
 #
 # Permission to use, copy, modify, and distribute this software and its
@@ -13,14 +15,13 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
 # OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 import dns.rdata
 import dns.rdataclass
 import dns.rdatatype
+
+import tests.ttxt_module
 
 class RdataTestCase(unittest.TestCase):
 
@@ -31,6 +32,20 @@ class RdataTestCase(unittest.TestCase):
     def test_unicode(self):
         rdata = dns.rdata.from_text(dns.rdataclass.IN, dns.rdatatype.A, u"1.2.3.4")
         self.failUnless(rdata.address == "1.2.3.4")
+
+    def test_module_registration(self):
+        TTXT = 64001
+        dns.rdata.register_type(tests.ttxt_module, TTXT, 'TTXT')
+        rdata = dns.rdata.from_text(dns.rdataclass.IN, TTXT, 'hello world')
+        self.failUnless(rdata.strings == [b'hello', b'world'])
+        self.failUnless(dns.rdatatype.to_text(TTXT) == 'TTXT')
+        self.failUnless(dns.rdatatype.from_text('TTXT') == TTXT)
+
+    def test_module_reregistration(self):
+        def bad():
+            TTXTTWO = dns.rdatatype.TXT
+            dns.rdata.register_type(tests.ttxt_module, TTXTTWO, 'TTXTTWO')
+        self.failUnlessRaises(dns.rdata.RdatatypeExists, bad)
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,5 +1,7 @@
 # -*- coding: utf-8
-# Copyright (C) 2003-2007, 2009-2011 Nominum, Inc.
+# Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license
+
+# Copyright (C) 2003-2017 Nominum, Inc.
 #
 # Permission to use, copy, modify, and distribute this software and its
 # documentation for any purpose with or without fee is hereby granted,
@@ -16,10 +18,8 @@
 
 from __future__ import print_function
 
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+from typing import Dict # pylint: disable=unused-import
+import unittest
 
 from io import BytesIO
 
@@ -27,7 +27,7 @@ import dns.name
 import dns.reversename
 import dns.e164
 
-# pylint: disable=line-too-long
+# pylint: disable=line-too-long,unsupported-assignment-operation
 
 
 class NameTestCase(unittest.TestCase):
@@ -380,14 +380,14 @@ class NameTestCase(unittest.TestCase):
     def testToWire1(self):
         n = dns.name.from_text('FOO.bar')
         f = BytesIO()
-        compress = {}
+        compress = {} # type: Dict[dns.name.Name,int]
         n.to_wire(f, compress)
         self.assertEqual(f.getvalue(), b'\x03FOO\x03bar\x00')
 
     def testToWire2(self):
         n = dns.name.from_text('FOO.bar')
         f = BytesIO()
-        compress = {}
+        compress = {} # type: Dict[dns.name.Name,int]
         n.to_wire(f, compress)
         n.to_wire(f, compress)
         self.assertEqual(f.getvalue(), b'\x03FOO\x03bar\x00\xc0\x00')
@@ -396,7 +396,7 @@ class NameTestCase(unittest.TestCase):
         n1 = dns.name.from_text('FOO.bar')
         n2 = dns.name.from_text('foo.bar')
         f = BytesIO()
-        compress = {}
+        compress = {} # type: Dict[dns.name.Name,int]
         n1.to_wire(f, compress)
         n2.to_wire(f, compress)
         self.assertEqual(f.getvalue(), b'\x03FOO\x03bar\x00\xc0\x00')
@@ -405,7 +405,7 @@ class NameTestCase(unittest.TestCase):
         n1 = dns.name.from_text('FOO.bar')
         n2 = dns.name.from_text('a.foo.bar')
         f = BytesIO()
-        compress = {}
+        compress = {} # type: Dict[dns.name.Name,int]
         n1.to_wire(f, compress)
         n2.to_wire(f, compress)
         self.assertEqual(f.getvalue(), b'\x03FOO\x03bar\x00\x01\x61\xc0\x00')
@@ -414,7 +414,7 @@ class NameTestCase(unittest.TestCase):
         n1 = dns.name.from_text('FOO.bar')
         n2 = dns.name.from_text('a.foo.bar')
         f = BytesIO()
-        compress = {}
+        compress = {} # type: Dict[dns.name.Name,int]
         n1.to_wire(f, compress)
         n2.to_wire(f, None)
         self.assertEqual(f.getvalue(),
@@ -429,7 +429,7 @@ class NameTestCase(unittest.TestCase):
         def bad():
             n = dns.name.from_text('FOO.bar', None)
             f = BytesIO()
-            compress = {}
+            compress = {} # type: Dict[dns.name.Name,int]
             n.to_wire(f, compress)
         self.failUnlessRaises(dns.name.NeedAbsoluteNameOrOrigin, bad)
 
@@ -764,7 +764,7 @@ class NameTestCase(unittest.TestCase):
 
     def testForwardIPv4(self):
         n = dns.name.from_text('1.0.0.127.in-addr.arpa.')
-        e = b'127.0.0.1'
+        e = '127.0.0.1'
         text = dns.reversename.to_address(n)
         self.assertEqual(text, e)
 
@@ -782,7 +782,7 @@ class NameTestCase(unittest.TestCase):
 
     def testEnumToE164(self):
         n = dns.name.from_text('2.1.2.1.5.5.5.0.5.6.1.e164.arpa.')
-        e = b'+16505551212'
+        e = '+16505551212'
         text = dns.e164.to_e164(n)
         self.assertEqual(text, e)
 
