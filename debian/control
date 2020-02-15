@@ -10,7 +10,7 @@ Homepage: http://www.dnspython.org
 Standards-Version: 3.9.8
 Vcs-Git: https://anonscm.debian.org/git/python-modules/packages/dnspython.git
 Vcs-Browser: https://anonscm.debian.org/cgit/python-modules/packages/dnspython.git
-XS-Pexip-Upstream: http://ftp.debian.org/debian/ stretch
+XS-Pexip-Upstream: http://ftp.debian.org/debian/ buster
 
 Package: python-dnspython
 Architecture: all
