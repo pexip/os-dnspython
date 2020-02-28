@@ -1,3 +1,5 @@
+# Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license
+
 # Copyright (C) 2003-2007, 2009-2011 Nominum, Inc.
 #
 # Permission to use, copy, modify, and distribute this software and its
@@ -16,10 +18,7 @@
 import sys
 sys.path.insert(0, '../')  # Force the local project to be *the* dns
 
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 import dns.exception
 import dns.rdata
@@ -140,17 +139,17 @@ def _rdata_sort(a):
 
 class GenerateTestCase(unittest.TestCase):
 
-    def testFromText(self):
-        def bad():
+    def testFromText(self): # type: () -> None
+        def bad(): # type: () -> None
             dns.zone.from_text(example_text, 'example.', relativize=True)
         self.failUnlessRaises(dns.zone.NoSOA, bad)
 
-    def testFromText1(self):
-        def bad():
+    def testFromText1(self): # type: () -> None
+        def bad(): # type: () -> None
             dns.zone.from_text(example_text1, 'example.', relativize=True)
         self.failUnlessRaises(dns.zone.NoSOA, bad)
 
-    def testIterateAllRdatas2(self):
+    def testIterateAllRdatas2(self): # type: () -> None
         z = dns.zone.from_text(example_text2, 'example.', relativize=True)
         l = list(z.iterate_rdatas())
         l.sort(key=_rdata_sort)
@@ -194,7 +193,7 @@ class GenerateTestCase(unittest.TestCase):
         exl.sort(key=_rdata_sort)
         self.failUnless(l == exl)
 
-    def testIterateAllRdatas3(self):
+    def testIterateAllRdatas3(self): # type: () -> None
         z = dns.zone.from_text(example_text3, 'example.', relativize=True)
         l = list(z.iterate_rdatas())
         l.sort(key=_rdata_sort)
@@ -233,7 +232,7 @@ class GenerateTestCase(unittest.TestCase):
                                     '10.0.0.8'))]
         exl.sort(key=_rdata_sort)
         self.failUnless(l == exl)
-    def testGenerate1(self):
+    def testGenerate1(self): # type: () -> None
         z = dns.zone.from_text(example_text4, 'example.', relativize=True)
         l = list(z.iterate_rdatas())
         l.sort(key=_rdata_sort)
@@ -279,7 +278,7 @@ class GenerateTestCase(unittest.TestCase):
         exl.sort(key=_rdata_sort)
         self.assertEqual(l, exl)
 
-    def testGenerate2(self):
+    def testGenerate2(self): # type: () -> None
         z = dns.zone.from_text(example_text5, 'example.', relativize=True)
         l = list(z.iterate_rdatas())
         l.sort(key=_rdata_sort)
@@ -322,7 +321,7 @@ class GenerateTestCase(unittest.TestCase):
         exl.sort(key=_rdata_sort)
         self.failUnless(l == exl)
 
-    def testGenerate3(self):
+    def testGenerate3(self): # type: () -> None
         z = dns.zone.from_text(example_text6, 'example.', relativize=True)
         l = list(z.iterate_rdatas())
         l.sort(key=_rdata_sort)
@@ -365,7 +364,7 @@ class GenerateTestCase(unittest.TestCase):
         exl.sort(key=_rdata_sort)
         self.failUnless(l == exl)
 
-    def testGenerate4(self):
+    def testGenerate4(self): # type: () -> None
         z = dns.zone.from_text(example_text7, 'example.', relativize=True)
         l = list(z.iterate_rdatas())
         l.sort(key=_rdata_sort)
@@ -408,7 +407,7 @@ class GenerateTestCase(unittest.TestCase):
         exl.sort(key=_rdata_sort)
         self.failUnless(l == exl)
 
-    def testGenerate6(self):
+    def testGenerate6(self): # type: () -> None
         z = dns.zone.from_text(example_text9, 'example.', relativize=True)
         l = list(z.iterate_rdatas())
         l.sort(key=_rdata_sort)
@@ -458,7 +457,7 @@ class GenerateTestCase(unittest.TestCase):
         exl.sort(key=_rdata_sort)
         self.failUnless(l == exl)
 
-    def testGenerate7(self):
+    def testGenerate7(self): # type: () -> None
         z = dns.zone.from_text(example_text10, 'example.', relativize=True)
         l = list(z.iterate_rdatas())
         l.sort(key=_rdata_sort)

@@ -5,11 +5,10 @@ Maintainer: Pexip AS <packaging@pexip.com>
 XSBC-Pexip-Original-Maintainer: Debian Python Modules Team <python-modules-team@lists.alioth.debian.org>
 XSBC-Pexip-Original-Uploaders: Robert S. Edmonds <edmonds@debian.org>, Scott Kitterman <scott@kitterman.com>, Matthew Grant <matthewgrant5@gmail.com>
 Build-Depends: debhelper (>= 9~), python-all (>= 2.6.6-3~), python-setuptools, python3-all (>= 3.3), python3-setuptools, dh-python, netbase
-X-Python3-Version: >= 3.3
 Homepage: http://www.dnspython.org
-Standards-Version: 3.9.8
-Vcs-Git: https://anonscm.debian.org/git/python-modules/packages/dnspython.git
-Vcs-Browser: https://anonscm.debian.org/cgit/python-modules/packages/dnspython.git
+Standards-Version: 4.2.1
+Vcs-Git: https://salsa.debian.org/python-team/modules/dnspython.git
+Vcs-Browser: https://salsa.debian.org/python-team/modules/dnspython
 XS-Pexip-Upstream: http://ftp.debian.org/debian/ buster
 
 Package: python-dnspython
