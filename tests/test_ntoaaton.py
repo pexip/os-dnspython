@@ -15,10 +15,9 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
 # OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from __future__ import print_function
-
 import unittest
 import binascii
+import socket
 
 import dns.exception
 import dns.ipv4
@@ -39,19 +38,19 @@ class NtoAAtoNTestCase(unittest.TestCase):
 
     def test_aton1(self):
         a = aton6('::')
-        self.failUnless(a == b'\x00' * 16)
+        self.assertEqual(a, b'\x00' * 16)
 
     def test_aton2(self):
         a = aton6('::1')
-        self.failUnless(a == b'\x00' * 15 + b'\x01')
+        self.assertEqual(a, b'\x00' * 15 + b'\x01')
 
     def test_aton3(self):
         a = aton6('::10.0.0.1')
-        self.failUnless(a == b'\x00' * 12 + b'\x0a\x00\x00\x01')
+        self.assertEqual(a, b'\x00' * 12 + b'\x0a\x00\x00\x01')
 
     def test_aton4(self):
         a = aton6('abcd::dcba')
-        self.failUnless(a == b'\xab\xcd' + b'\x00' * 12 + b'\xdc\xba')
+        self.assertEqual(a, b'\xab\xcd' + b'\x00' * 12 + b'\xdc\xba')
 
     def test_aton5(self):
         a = aton6('1:2:3:4:5:6:7:8')
@@ -61,17 +60,22 @@ class NtoAAtoNTestCase(unittest.TestCase):
     def test_bad_aton1(self):
         def bad():
             aton6('abcd:dcba')
-        self.failUnlessRaises(dns.exception.SyntaxError, bad)
+        self.assertRaises(dns.exception.SyntaxError, bad)
 
     def test_bad_aton2(self):
         def bad():
             aton6('abcd::dcba::1')
-        self.failUnlessRaises(dns.exception.SyntaxError, bad)
+        self.assertRaises(dns.exception.SyntaxError, bad)
 
     def test_bad_aton3(self):
         def bad():
             aton6('1:2:3:4:5:6:7:8:9')
-        self.failUnlessRaises(dns.exception.SyntaxError, bad)
+        self.assertRaises(dns.exception.SyntaxError, bad)
+
+    def test_bad_aton4(self):
+        def bad():
+            aton4('001.002.003.004')
+        self.assertRaises(dns.exception.SyntaxError, bad)
 
     def test_aton6(self):
         a = aton6('::')
@@ -161,13 +165,20 @@ class NtoAAtoNTestCase(unittest.TestCase):
 
     def test_bad_ntoa1(self):
         def bad():
-            ntoa6('')
-        self.failUnlessRaises(ValueError, bad)
+            ntoa6(b'')
+        self.assertRaises(ValueError, bad)
 
     def test_bad_ntoa2(self):
         def bad():
-            ntoa6('\x00' * 17)
-        self.failUnlessRaises(ValueError, bad)
+            ntoa6(b'\x00' * 17)
+        self.assertRaises(ValueError, bad)
+
+    def test_bad_ntoa3(self):
+        def bad():
+            ntoa4(b'\x00' * 5)
+        # Ideally we'd have been consistent and raised ValueError as
+        # we do for IPv6, but oh well!
+        self.assertRaises(dns.exception.SyntaxError, bad)
 
     def test_good_v4_aton(self):
         pairs = [('1.2.3.4', b'\x01\x02\x03\x04'),
@@ -185,8 +196,7 @@ class NtoAAtoNTestCase(unittest.TestCase):
                 return aton4(a)
             return bad
         for addr in v4_bad_addrs:
-            print(addr)
-            self.failUnlessRaises(dns.exception.SyntaxError, make_bad(addr))
+            self.assertRaises(dns.exception.SyntaxError, make_bad(addr))
 
     def test_bad_v6_aton(self):
         addrs = ['+::0', '0::0::', '::0::', '1:2:3:4:5:6:7:8:9',
@@ -198,7 +208,7 @@ class NtoAAtoNTestCase(unittest.TestCase):
                 x = aton6(a)
             return bad
         for addr in addrs:
-            self.failUnlessRaises(dns.exception.SyntaxError, make_bad(addr))
+            self.assertRaises(dns.exception.SyntaxError, make_bad(addr))
 
     def test_rfc5952_section_4_2_2(self):
         addr = '2001:db8:0:1:1:1:1:1'
@@ -210,9 +220,9 @@ class NtoAAtoNTestCase(unittest.TestCase):
         t1 = '2001:db8:0:1:1:1:1:1'
         t2 = '::ffff:127.0.0.1'
         t3 = '1::ffff:127.0.0.1'
-        self.failIf(dns.ipv6.is_mapped(aton6(t1)))
-        self.failUnless(dns.ipv6.is_mapped(aton6(t2)))
-        self.failIf(dns.ipv6.is_mapped(aton6(t3)))
+        self.assertFalse(dns.ipv6.is_mapped(aton6(t1)))
+        self.assertTrue(dns.ipv6.is_mapped(aton6(t2)))
+        self.assertFalse(dns.ipv6.is_mapped(aton6(t3)))
 
     def test_is_multicast(self):
         t1 = '223.0.0.1'
@@ -221,12 +231,90 @@ class NtoAAtoNTestCase(unittest.TestCase):
         t4 = '239.0.0.1'
         t5 = 'fe00::1'
         t6 = 'ff00::1'
-        self.failIf(dns.inet.is_multicast(t1))
-        self.failIf(dns.inet.is_multicast(t2))
-        self.failUnless(dns.inet.is_multicast(t3))
-        self.failUnless(dns.inet.is_multicast(t4))
-        self.failIf(dns.inet.is_multicast(t5))
-        self.failUnless(dns.inet.is_multicast(t6))
+        self.assertFalse(dns.inet.is_multicast(t1))
+        self.assertFalse(dns.inet.is_multicast(t2))
+        self.assertTrue(dns.inet.is_multicast(t3))
+        self.assertTrue(dns.inet.is_multicast(t4))
+        self.assertFalse(dns.inet.is_multicast(t5))
+        self.assertTrue(dns.inet.is_multicast(t6))
+
+    def test_is_multicast_bad_input(self):
+        def bad():
+            dns.inet.is_multicast('hello world')
+        self.assertRaises(ValueError, bad)
+
+    def test_ignore_scope(self):
+        t1 = 'fe80::1%lo0'
+        t2 = 'fe80::1'
+        self.assertEqual(aton6(t1, True), aton6(t2))
+
+    def test_do_not_ignore_scope(self):
+        def bad():
+            t1 = 'fe80::1%lo0'
+            aton6(t1)
+        self.assertRaises(dns.exception.SyntaxError, bad)
+
+    def test_multiple_scopes_bad(self):
+        def bad():
+            t1 = 'fe80::1%lo0%lo1'
+            aton6(t1, True)
+        self.assertRaises(dns.exception.SyntaxError, bad)
+
+    def test_ptontop(self):
+        for (af, a) in [(socket.AF_INET, '1.2.3.4'),
+                        (socket.AF_INET6, '2001:db8:0:1:1:1:1:1')]:
+            self.assertEqual(dns.inet.inet_ntop(af, dns.inet.inet_pton(af, a)),
+                             a)
+
+    def test_isaddress(self):
+        for (t, e) in [('1.2.3.4', True),
+                       ('2001:db8:0:1:1:1:1:1', True),
+                       ('hello world', False),
+                       ('http://www.dnspython.org', False),
+                       ('1.2.3.4a', False),
+                       ('2001:db8:0:1:1:1:1:q1', False)]:
+            self.assertEqual(dns.inet.is_address(t), e)
+
+    def test_low_level_address_tuple(self):
+        t = dns.inet.low_level_address_tuple(('1.2.3.4', 53))
+        self.assertEqual(t, ('1.2.3.4', 53))
+        t = dns.inet.low_level_address_tuple(('2600::1', 53))
+        self.assertEqual(t, ('2600::1', 53, 0, 0))
+        t = dns.inet.low_level_address_tuple(('1.2.3.4', 53), socket.AF_INET)
+        self.assertEqual(t, ('1.2.3.4', 53))
+        t = dns.inet.low_level_address_tuple(('2600::1', 53), socket.AF_INET6)
+        self.assertEqual(t, ('2600::1', 53, 0, 0))
+        t = dns.inet.low_level_address_tuple(('fd80::1%2', 53), socket.AF_INET6)
+        self.assertEqual(t, ('fd80::1', 53, 0, 2))
+        try:
+            # This can fail on windows for python < 3.8, so we tolerate
+            # the failure and only test if we have something we can work
+            # with.
+            info = socket.if_nameindex()
+        except Exception:
+            info = []
+        if info:
+            # find first thing on list that is not zero (should be first thing!
+            pair = None
+            for p in info:
+                if p[0] != 0:
+                    pair = p
+                    break
+            if pair:
+                address = 'fd80::1%' + pair[1]
+                t = dns.inet.low_level_address_tuple((address, 53),
+                                                     socket.AF_INET6)
+                self.assertEqual(t, ('fd80::1', 53, 0, pair[0]))
+        def bad():
+            bogus = socket.AF_INET + socket.AF_INET6 + 1
+            t = dns.inet.low_level_address_tuple(('2600::1', 53), bogus)
+        self.assertRaises(NotImplementedError, bad)
+
+    def test_bogus_family(self):
+        self.assertRaises(NotImplementedError,
+                          lambda: dns.inet.inet_pton(12345, 'bogus'))
+        self.assertRaises(NotImplementedError,
+                          lambda: dns.inet.inet_ntop(12345, b'bogus'))
 
 if __name__ == '__main__':
     unittest.main()

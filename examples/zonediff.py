@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Small library and commandline tool to do logical diffs of zonefiles
 # ./zonediff -h gives you help output
@@ -21,7 +21,6 @@
 # OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 """See diff_zones.__doc__ for more information"""
 
-from __future__ import print_function
 from typing import cast, Union, Any # pylint: disable=unused-import
 
 __all__ = ['diff_zones', 'format_changes_plain', 'format_changes_html']

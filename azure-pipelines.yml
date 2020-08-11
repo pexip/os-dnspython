@@ -1,0 +1,50 @@
+# Python package
+# Create and test a Python package on multiple Python versions.
+# Add steps that analyze code, save the dist with the build record, publish to a PyPI-compatible index, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/python
+
+trigger:
+- master
+
+jobs:
+- job: Windows
+  pool:
+    vmImage: 'vs2017-win2016'
+  strategy:
+    matrix:
+      Python37:
+        python.version: '3.7'
+  steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '$(python.version)'
+    displayName: 'Use Python $(python.version)'
+
+  - script: |
+      python -m pip install --upgrade pip
+      pip install -e .[dnssec,idna,doh,trio,curio]
+    displayName: 'Install python dependencies'
+
+  - script: |
+      dotnet tool install --global Codecov.Tool
+    displayName: 'Install Codecov.Tool'
+
+  - script: |
+      pip install pytest pytest-cov pytest-azurepipelines
+      pytest --junitxml=junit/test-results.xml --cov=. --cov-report=xml --cov-report=html
+    displayName: 'pytest'
+
+  - task: PublishTestResults@2
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFiles: '**/test-*.xml'
+      testRunTitle: 'Publish test results for Python $(python.version)'
+
+#  - task: PublishCodeCoverageResults@1
+#    inputs:
+#      codeCoverageTool: Cobertura
+#      summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/coverage.xml'
+
+  - script: |
+      codecov -f coverage.xml
+    displayName: 'Upload to codecov'

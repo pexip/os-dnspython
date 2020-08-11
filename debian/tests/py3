@@ -1,0 +1,8 @@
+#! /bin/sh
+
+set -e
+
+for py3vers in $(py3versions -sv); do
+    echo Testing with python$py3vers
+    python$py3vers setup.py test
+done

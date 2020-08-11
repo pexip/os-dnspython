@@ -3,8 +3,6 @@
 # This is just a toy, real code would check that the received message
 # really was a NOTIFY, and otherwise handle errors.
 
-from __future__ import print_function
-
 import socket
 
 import dns.flags
@@ -23,11 +21,16 @@ s.bind((address, port))
 while True:
     (wire, address) = s.recvfrom(512)
     notify = dns.message.from_wire(wire)
-    soa = notify.find_rrset(notify.answer, notify.question[0].name,
-                            dns.rdataclass.IN, dns.rdatatype.SOA)
 
-    # Do something with the SOA RR here
-    print('The serial number for', soa.name, 'is', soa[0].serial)
+    try:
+        soa = notify.find_rrset(notify.answer, notify.question[0].name,
+                                dns.rdataclass.IN, dns.rdatatype.SOA)
+
+        # Do something with the SOA RR here
+        print('The serial number for', soa.name, 'is', soa[0].serial)
+    except KeyError:
+        # No SOA RR in the answer section.
+        pass
 
     response = dns.message.make_response(notify) # type: dns.message.Message
     response.flags |= dns.flags.AA

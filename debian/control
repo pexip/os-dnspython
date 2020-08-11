@@ -3,32 +3,27 @@ Section: python
 Priority: optional
 Maintainer: Debian Python Modules Team <python-modules-team@lists.alioth.debian.org>
 Uploaders: Robert S. Edmonds <edmonds@debian.org>, Scott Kitterman <scott@kitterman.com>, Matthew Grant <matthewgrant5@gmail.com>
-Build-Depends: debhelper (>= 9~), python-all (>= 2.6.6-3~), python-setuptools, python3-all (>= 3.3), python3-setuptools, dh-python, netbase
+Build-Depends: debhelper-compat (= 12), python3-all, python3-setuptools, dh-python, netbase
 Homepage: http://www.dnspython.org
-Standards-Version: 4.2.1
+Standards-Version: 4.5.0
 Vcs-Git: https://salsa.debian.org/python-team/modules/dnspython.git
 Vcs-Browser: https://salsa.debian.org/python-team/modules/dnspython
 
-Package: python-dnspython
-Architecture: all
-Depends: ${python:Depends}, ${misc:Depends}
-Description: DNS toolkit for Python
- dnspython is a DNS toolkit for Python. It supports almost all record types. It
- can be used for queries, zone transfers, and dynamic updates. It supports TSIG
- authenticated messages and EDNS0.
- .
- dnspython provides both high and low level access to DNS. The high level
- classes perform queries for data of a given name, type, and class, and return
- an answer set. The low level classes allow direct manipulation of DNS zones,
- messages, names, and records.
-
 Package: python3-dnspython
 Architecture: all
-Depends: ${python3:Depends}, ${misc:Depends}
+Depends: ${python3:Depends}, ${misc:Depends}, netbase
+Recommends: python3-cryptography (>= 2.6), python3-idna, ca-certificates, python3-requests, python3-requests-toolbelt
+Suggests: python3-sniffio, python3-trio
+Breaks: python3-dkim (<< 1.0.5), dkimpy-milter (<< 1.2.2), python3-spf (<< 2.0.14-2~)
 Description: DNS toolkit for Python 3
  dnspython is a DNS toolkit for Python. It supports almost all record types. It
  can be used for queries, zone transfers, and dynamic updates. It supports TSIG
  authenticated messages and EDNS0.
+ .
+ With recommended additional dependencies installed it also support DNS Over
+ HTTPS (DOH), DNSSEC, and non-ascii (IDNA) DNS operations.  It can support
+ asynchronous if python3-sniffio and python3-trio are installed, but this is
+ not the default.
  .
  dnspython provides both high and low level access to DNS. The high level
  classes perform queries for data of a given name, type, and class, and return
