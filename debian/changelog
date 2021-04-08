@@ -1,3 +1,11 @@
+dnspython (1.16.0-1+deb10u1) buster; urgency=medium
+
+  * Team upload.
+  * d/patches: Add fix-do-not-compare-with-expiration-
+    if-None.patch from upstream (Closes: #986645)
+
+ -- Michal Arbet <michal.arbet@ultimum.io>  Thu, 08 Apr 2021 19:09:26 +0200
+
 dnspython (1.16.0-1) unstable; urgency=medium
 
   * Update debian/watch to use Github
