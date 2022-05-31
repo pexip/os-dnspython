@@ -15,8 +15,6 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
 # OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from __future__ import print_function
-
 import unittest
 
 import dns.dnssec
@@ -111,6 +109,9 @@ example_ds_sha1 = dns.rdata.from_text(dns.rdataclass.IN, dns.rdatatype.DS,
 example_ds_sha256 = dns.rdata.from_text(dns.rdataclass.IN, dns.rdatatype.DS,
                                         '18673 3 2 eb8344cbbf07c9d3d3d6c81d10c76653e28d8611a65e639ef8f716e4e4e5d913')
 
+example_ds_sha384 = dns.rdata.from_text(dns.rdataclass.IN, dns.rdatatype.DS,
+                                        '18673 3 4 61ab241025c5f88d2537be04dcfba96f952adaefe0b382ecbc4108c97b75768c9e99fd16caed2a09634c51e8089fb84f')
+
 when3 = 1379801800
 
 abs_ecdsa256_keys = {
@@ -149,84 +150,212 @@ abs_other_ecdsa384_soa = dns.rrset.from_text('example.', 86400, 'IN', 'SOA',
 abs_ecdsa384_soa_rrsig = dns.rrset.from_text('example.', 86400, 'IN', 'RRSIG',
                                              "SOA 14 1 86400 20130929021229 20130921230729 63571 example. CrnCu34EeeRz0fEhL9PLlwjpBKGYW8QjBjFQTwd+ViVLRAS8tNkcDwQE NhSV89NEjj7ze1a/JcCfcJ+/mZgnvH4NHLNg3Tf6KuLZsgs2I4kKQXEk 37oIHravPEOlGYNI")
 
+abs_example_com = dns.name.from_text('example.com')
 
+abs_ed25519_mx = dns.rrset.from_text('example.com.', 3600, 'IN', 'MX',
+                                     '10 mail.example.com.')
+abs_other_ed25519_mx = dns.rrset.from_text('example.com.', 3600, 'IN', 'MX',
+                                           '11 mail.example.com.')
+abs_ed25519_keys_1 = {
+    abs_example_com: dns.rrset.from_text(
+        'example.com', 3600, 'IN', 'DNSKEY',
+        '257 3 15 l02Woi0iS8Aa25FQkUd9RMzZHJpBoRQwAQEX1SxZJA4=')
+}
+abs_ed25519_mx_rrsig_1 = dns.rrset.from_text('example.com.', 3600, 'IN', 'RRSIG',
+                                             'MX 15 2 3600 1440021600 1438207200 3613 example.com. oL9krJun7xfBOIWcGHi7mag5/hdZrKWw15jPGrHpjQeRAvTdszaPD+QLs3fx8A4M3e23mRZ9VrbpMngwcrqNAg==')
 
-@unittest.skipUnless(dns.dnssec._have_pycrypto,
-                     "Pycryptodome cannot be imported")
+abs_ed25519_keys_2 = {
+    abs_example_com: dns.rrset.from_text(
+        'example.com', 3600, 'IN', 'DNSKEY',
+        '257 3 15 zPnZ/QwEe7S8C5SPz2OfS5RR40ATk2/rYnE9xHIEijs=')
+}
+abs_ed25519_mx_rrsig_2 = dns.rrset.from_text('example.com.', 3600, 'IN', 'RRSIG',
+                                             'MX 15 2 3600 1440021600 1438207200 35217 example.com. zXQ0bkYgQTEFyfLyi9QoiY6D8ZdYo4wyUhVioYZXFdT410QPRITQSqJSnzQoSm5poJ7gD7AQR0O7KuI5k2pcBg==')
+
+abs_ed448_mx = abs_ed25519_mx
+abs_other_ed448_mx = abs_other_ed25519_mx
+
+abs_ed448_keys_1 = {
+    abs_example_com: dns.rrset.from_text(
+        'example.com', 3600, 'IN', 'DNSKEY',
+        '257 3 16 3kgROaDjrh0H2iuixWBrc8g2EpBBLCdGzHmn+G2MpTPhpj/OiBVHHSfPodx1FYYUcJKm1MDpJtIA')
+}
+abs_ed448_mx_rrsig_1 = dns.rrset.from_text('example.com.', 3600, 'IN', 'RRSIG',
+                                           'MX 16 2 3600 1440021600 1438207200 9713 example.com. 3cPAHkmlnxcDHMyg7vFC34l0blBhuG1qpwLmjInI8w1CMB29FkEAIJUA0amxWndkmnBZ6SKiwZSAxGILn/NBtOXft0+Gj7FSvOKxE/07+4RQvE581N3Aj/JtIyaiYVdnYtyMWbSNyGEY2213WKsJlwEA')
+
+abs_ed448_keys_2 = {
+    abs_example_com: dns.rrset.from_text(
+        'example.com', 3600, 'IN', 'DNSKEY',
+        '257 3 16 kkreGWoccSDmUBGAe7+zsbG6ZAFQp+syPmYUurBRQc3tDjeMCJcVMRDmgcNLp5HlHAMy12VoISsA')
+}
+abs_ed448_mx_rrsig_2 = dns.rrset.from_text('example.com.', 3600, 'IN', 'RRSIG',
+                                           'MX 16 2 3600 1440021600 1438207200 38353 example.com. E1/oLjSGIbmLny/4fcgM1z4oL6aqo+izT3urCyHyvEp4Sp8Syg1eI+lJ57CSnZqjJP41O/9l4m0AsQ4f7qI1gVnML8vWWiyW2KXhT9kuAICUSxv5OWbf81Rq7Yu60npabODB0QFPb/rkW3kUZmQ0YQUA')
+
+when5 = 1440021600
+
+wildcard_keys = {
+    abs_example_com : dns.rrset.from_text(
+        'example.com', 3600, 'IN', 'DNSKEY',
+        '256 3 5 AwEAAecNZbwD2thg3kaRLVqCC7ASP/3F79ZIu7pCu8HvZZ6ZdinffnxT npNoVvavjouHKFYTtJyUZAfw3ZMJSsGvEerc7uh6Ex9TgvOJtWPGUtxB Nnni2u9Nk+5k6nJzMiS3sL3RLvrfZW5d2Bwbl9L5f9Ud+r2Dbm7EG3tY pMY5OE8f')
+}
+wildcard_example_com = dns.name.from_text('*', abs_example_com)
+wildcard_txt = dns.rrset.from_text('*.example.com.', 3600, 'IN', 'TXT', 'foo')
+wildcard_txt_rrsig = dns.rrset.from_text('*.example.com.', 3600, 'IN', 'RRSIG',
+                                         'TXT 5 2 3600 20200707211255 20200630180755 42486 example.com. qevJYhdAHq1VmehXQ5i+Epa32xs4zcd4qmb39pHa3GUKr1V504nxzdzQ gsT5mvDkRoY95+HAiysDON6DCDtZc69iBUIHWWuFo/OrcD2q/mWANG4x vyU28Pf0U1gN6Gd5iapKC0Ya12flKh//NQiNN2skOQ2MoF2MW2/MaAK2 HBc=')
+
+wildcard_when = 1593541048
+
+class DNSSECMakeDSTestCase(unittest.TestCase):
+    def testMnemonicParser(self):
+        good_ds_mnemonic = dns.rdata.from_text(dns.rdataclass.IN, dns.rdatatype.DS,
+                              '57349 RSASHA1 2 53A79A3E7488AB44FFC56B2D1109F0699D1796DD977E72108B841F96 E47D7013')
+        self.assertEqual(good_ds, good_ds_mnemonic)
+
+@unittest.skipUnless(dns.dnssec._have_pyca,
+                     "Python Cryptography cannot be imported")
 class DNSSECValidatorTestCase(unittest.TestCase):
 
-    def testAbsoluteRSAGood(self): # type: () -> None
+    def testAbsoluteRSAGood(self):  # type: () -> None
         dns.dnssec.validate(abs_soa, abs_soa_rrsig, abs_keys, None, when)
 
-    def testDuplicateKeytag(self): # type: () -> None
+    def testDuplicateKeytag(self):  # type: () -> None
         dns.dnssec.validate(abs_soa, abs_soa_rrsig, abs_keys_duplicate_keytag, None, when)
 
-    def testAbsoluteRSABad(self): # type: () -> None
-        def bad(): # type: () -> None
+    def testAbsoluteRSABad(self):  # type: () -> None
+        def bad():  # type: () -> None
             dns.dnssec.validate(abs_other_soa, abs_soa_rrsig, abs_keys, None,
                                 when)
-        self.failUnlessRaises(dns.dnssec.ValidationFailure, bad)
+        self.assertRaises(dns.dnssec.ValidationFailure, bad)
 
-    def testRelativeRSAGood(self): # type: () -> None
+    def testRelativeRSAGood(self):  # type: () -> None
         dns.dnssec.validate(rel_soa, rel_soa_rrsig, rel_keys,
                             abs_dnspython_org, when)
 
-    def testRelativeRSABad(self): # type: () -> None
-        def bad(): # type: () -> None
+    def testRelativeRSABad(self):  # type: () -> None
+        def bad():  # type: () -> None
             dns.dnssec.validate(rel_other_soa, rel_soa_rrsig, rel_keys,
                                 abs_dnspython_org, when)
-        self.failUnlessRaises(dns.dnssec.ValidationFailure, bad)
+        self.assertRaises(dns.dnssec.ValidationFailure, bad)
 
-    def testMakeSHA256DS(self): # type: () -> None
-        ds = dns.dnssec.make_ds(abs_dnspython_org, sep_key, 'SHA256')
-        self.failUnless(ds == good_ds)
-
-    def testAbsoluteDSAGood(self): # type: () -> None
+    def testAbsoluteDSAGood(self):  # type: () -> None
         dns.dnssec.validate(abs_dsa_soa, abs_dsa_soa_rrsig, abs_dsa_keys, None,
                             when2)
 
-    def testAbsoluteDSABad(self): # type: () -> None
-        def bad(): # type: () -> None
+    def testAbsoluteDSABad(self):  # type: () -> None
+        def bad():  # type: () -> None
             dns.dnssec.validate(abs_other_dsa_soa, abs_dsa_soa_rrsig,
                                 abs_dsa_keys, None, when2)
-        self.failUnlessRaises(dns.dnssec.ValidationFailure, bad)
+        self.assertRaises(dns.dnssec.ValidationFailure, bad)
 
-    def testMakeExampleSHA1DS(self): # type: () -> None
-        ds = dns.dnssec.make_ds(abs_example, example_sep_key, 'SHA1')
-        self.failUnless(ds == example_ds_sha1)
-
-    def testMakeExampleSHA256DS(self): # type: () -> None
-        ds = dns.dnssec.make_ds(abs_example, example_sep_key, 'SHA256')
-        self.failUnless(ds == example_ds_sha256)
-
-    @unittest.skipUnless(dns.dnssec._have_ecdsa,
-                         "python ECDSA cannot be imported")
-    def testAbsoluteECDSA256Good(self): # type: () -> None
+    def testAbsoluteECDSA256Good(self):  # type: () -> None
         dns.dnssec.validate(abs_ecdsa256_soa, abs_ecdsa256_soa_rrsig,
                             abs_ecdsa256_keys, None, when3)
 
-    @unittest.skipUnless(dns.dnssec._have_ecdsa,
-                         "python ECDSA cannot be imported")
-    def testAbsoluteECDSA256Bad(self): # type: () -> None
-        def bad(): # type: () -> None
+    def testAbsoluteECDSA256Bad(self):  # type: () -> None
+        def bad():  # type: () -> None
             dns.dnssec.validate(abs_other_ecdsa256_soa, abs_ecdsa256_soa_rrsig,
                                 abs_ecdsa256_keys, None, when3)
-        self.failUnlessRaises(dns.dnssec.ValidationFailure, bad)
+        self.assertRaises(dns.dnssec.ValidationFailure, bad)
 
-    @unittest.skipUnless(dns.dnssec._have_ecdsa,
-                         "python ECDSA cannot be imported")
-    def testAbsoluteECDSA384Good(self): # type: () -> None
+    def testAbsoluteECDSA384Good(self):  # type: () -> None
         dns.dnssec.validate(abs_ecdsa384_soa, abs_ecdsa384_soa_rrsig,
                             abs_ecdsa384_keys, None, when4)
 
-    @unittest.skipUnless(dns.dnssec._have_ecdsa,
-                         "python ECDSA cannot be imported")
-    def testAbsoluteECDSA384Bad(self): # type: () -> None
-        def bad(): # type: () -> None
+    def testAbsoluteECDSA384Bad(self):  # type: () -> None
+        def bad():  # type: () -> None
             dns.dnssec.validate(abs_other_ecdsa384_soa, abs_ecdsa384_soa_rrsig,
                                 abs_ecdsa384_keys, None, when4)
-        self.failUnlessRaises(dns.dnssec.ValidationFailure, bad)
+        self.assertRaises(dns.dnssec.ValidationFailure, bad)
 
+    def testAbsoluteED25519Good(self):  # type: () -> None
+        dns.dnssec.validate(abs_ed25519_mx, abs_ed25519_mx_rrsig_1,
+                            abs_ed25519_keys_1, None, when5)
+        dns.dnssec.validate(abs_ed25519_mx, abs_ed25519_mx_rrsig_2,
+                            abs_ed25519_keys_2, None, when5)
+
+    def testAbsoluteED25519Bad(self):  # type: () -> None
+        with self.assertRaises(dns.dnssec.ValidationFailure):
+            dns.dnssec.validate(abs_other_ed25519_mx, abs_ed25519_mx_rrsig_1,
+                                abs_ed25519_keys_1, None, when5)
+        with self.assertRaises(dns.dnssec.ValidationFailure):
+            dns.dnssec.validate(abs_other_ed25519_mx, abs_ed25519_mx_rrsig_2,
+                                abs_ed25519_keys_2, None, when5)
+
+    def testAbsoluteED448Good(self):  # type: () -> None
+        dns.dnssec.validate(abs_ed448_mx, abs_ed448_mx_rrsig_1,
+                            abs_ed448_keys_1, None, when5)
+        dns.dnssec.validate(abs_ed448_mx, abs_ed448_mx_rrsig_2,
+                            abs_ed448_keys_2, None, when5)
+
+    def testAbsoluteED448Bad(self):  # type: () -> None
+        with self.assertRaises(dns.dnssec.ValidationFailure):
+            dns.dnssec.validate(abs_other_ed448_mx, abs_ed448_mx_rrsig_1,
+                                abs_ed448_keys_1, None, when5)
+        with self.assertRaises(dns.dnssec.ValidationFailure):
+            dns.dnssec.validate(abs_other_ed448_mx, abs_ed448_mx_rrsig_2,
+                                abs_ed448_keys_2, None, when5)
+
+    def testWildcardGood(self): # type: () -> None
+        dns.dnssec.validate(wildcard_txt, wildcard_txt_rrsig,
+                            wildcard_keys, None, wildcard_when)
+
+        def clone_rrset(rrset, name):
+            return dns.rrset.from_rdata(name, rrset.ttl, rrset[0])
+
+        a_name = dns.name.from_text('a.example.com')
+        a_txt = clone_rrset(wildcard_txt, a_name)
+        a_txt_rrsig = clone_rrset(wildcard_txt_rrsig, a_name)
+        dns.dnssec.validate(a_txt, a_txt_rrsig, wildcard_keys, None,
+                            wildcard_when)
+
+        abc_name = dns.name.from_text('a.b.c.example.com')
+        abc_txt = clone_rrset(wildcard_txt, abc_name)
+        abc_txt_rrsig = clone_rrset(wildcard_txt_rrsig, abc_name)
+        dns.dnssec.validate(abc_txt, abc_txt_rrsig, wildcard_keys, None,
+                            wildcard_when)
+
+    def testAlternateParameterFormats(self):  # type: () -> None
+        # Pass rrset and rrsigset as (name, rdataset) tuples, not rrsets
+        rrset = (abs_soa.name, abs_soa.to_rdataset())
+        rrsigset = (abs_soa_rrsig.name, abs_soa_rrsig.to_rdataset())
+        dns.dnssec.validate(rrset, rrsigset, abs_keys, None, when)
+
+        # Pass keys as a name->node dict, not a name->rrset dict
+        keys = {}
+        for (name, key_rrset) in abs_keys.items():
+            keys[name] = dns.node.Node()
+            keys[name].rdatasets.append(key_rrset.to_rdataset())
+        dns.dnssec.validate(abs_soa, abs_soa_rrsig, keys, None, when)
+
+        # Pass origin as a string, not a name.
+        dns.dnssec.validate(rel_soa, rel_soa_rrsig, rel_keys,
+                            'dnspython.org', when)
+
+class DNSSECMakeDSTestCase(unittest.TestCase):
+
+    def testMakeExampleSHA1DS(self):  # type: () -> None
+        for algorithm in ('SHA1', 'sha1', dns.dnssec.DSDigest.SHA1):
+            ds = dns.dnssec.make_ds(abs_example, example_sep_key, algorithm)
+            self.assertEqual(ds, example_ds_sha1)
+
+    def testMakeExampleSHA256DS(self):  # type: () -> None
+        for algorithm in ('SHA256', 'sha256', dns.dnssec.DSDigest.SHA256):
+            ds = dns.dnssec.make_ds(abs_example, example_sep_key, algorithm)
+            self.assertEqual(ds, example_ds_sha256)
+
+    def testMakeExampleSHA384DS(self):  # type: () -> None
+        for algorithm in ('SHA384', 'sha384', dns.dnssec.DSDigest.SHA384):
+            ds = dns.dnssec.make_ds(abs_example, example_sep_key, algorithm)
+            self.assertEqual(ds, example_ds_sha384)
+
+    def testMakeSHA256DS(self):  # type: () -> None
+        ds = dns.dnssec.make_ds(abs_dnspython_org, sep_key, 'SHA256')
+        self.assertEqual(ds, good_ds)
+
+    def testInvalidAlgorithm(self):  # type: () -> None
+        for algorithm in (10, 'shax'):
+            with self.assertRaises(dns.dnssec.UnsupportedAlgorithm):
+                ds = dns.dnssec.make_ds(abs_example, example_sep_key, algorithm)
 
 if __name__ == '__main__':
     unittest.main()

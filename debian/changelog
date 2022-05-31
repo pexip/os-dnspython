@@ -1,16 +1,40 @@
+dnspython (2.0.0-1) unstable; urgency=medium
+
+  * New upstream release
+  * Add Breaks for python3-dkim << 1.0.5, dkimpy-milter << 1.2.2, and
+    python3-spf << 2.0.14-2~
+  * Add python3-requests, python3-requests-toolbelt, and ca-certificates to
+    Recommends for DOH support
+  * Replace Reccomends of python3-pycryptodome, python3-ecdsa for DNSSEC
+    support with python3-cryptography >= 2.6
+  * Add python3-sniffio add python3-trio to Suggests for asyncio support
+  * Update package long description to reflect current functionality
+
+ -- Scott Kitterman <scott@kitterman.com>  Mon, 10 Aug 2020 20:42:58 -0400
+
+dnspython (1.16.0-2) unstable; urgency=medium
+
+  [ Ondřej Nový ]
+  * Use debhelper-compat instead of debian/compat.
+
+  [ Scott Kitterman ]
+  * Drop python2 support (Closes: #952782, #936427)
+  * Bump standards-version to 4.5.0 without further change
+  * Bump debhelper-compat to 12 without further change
+  * Drop ancient python3-all version requirements
+  * Add missing Depends on netbase
+  * Add Recommends for python3-pycryptodome, python3-ecdsa, python3-idna to
+    support DNSSEC and modern DNS with IDNA capabilities
+  * Add autopkgtests using upstream test suite
+  * Include README.md in package
+
+ -- Scott Kitterman <scott@kitterman.com>  Sat, 07 Mar 2020 19:31:03 -0500
+
 dnspython (1.16.0-1+deb10u1pexip1) pexip; urgency=medium
 
   * New upstream version.
 
  -- Mark Hymers <mark.hymers@pexip.com>  Mon, 21 Jun 2021 12:15:24 +0100
-
-dnspython (1.16.0-1+deb10u1) buster; urgency=medium
-
-  * Team upload.
-  * d/patches: Add fix-do-not-compare-with-expiration-
-    if-None.patch from upstream (Closes: #986645)
-
- -- Michal Arbet <michal.arbet@ultimum.io>  Thu, 08 Apr 2021 19:09:26 +0200
 
 dnspython (1.16.0-1pexip3) pexip; urgency=medium
 

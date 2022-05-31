@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Usage: reverse.py <zone_filename>...
 #
@@ -15,8 +15,6 @@
 #
 # If this weren't a demo script, there'd be a way of specifying the
 # origin for each zone instead of constructing it from the filename.
-
-from __future__ import print_function
 
 import dns.zone
 import dns.ipv4
