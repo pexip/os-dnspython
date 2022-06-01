@@ -1,11 +1,11 @@
---- dnspython-1.12.0/dns/message.py 2014-04-04 13:36:11.000000000 +0100
-+++ dnspython-1.12.0-af/dns/message.py  2017-10-18 15:21:23.000000000 +0100
-@@ -724,7 +724,7 @@
-         if dns.opcode.is_update(self.message.flags):
-             self.updating = True
-         self._get_question(qcount)
+--- a/dns/message.py
++++ b/dns/message.py
+@@ -852,7 +852,7 @@
+         self.one_rr_per_rrset = \
+             self.message._get_one_rr_per_rrset(self.one_rr_per_rrset)
+         self._get_question(MessageSection.QUESTION, qcount)
 -        if self.question_only:
 +        if self.question_only or self.message.flags & dns.flags.TC:
              return
-         self._get_section(self.message.answer, ancount)
-         self._get_section(self.message.authority, aucount)
+         self._get_section(MessageSection.ANSWER, ancount)
+         self._get_section(MessageSection.AUTHORITY, aucount)
