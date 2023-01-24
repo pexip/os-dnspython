@@ -1,13 +1,13 @@
 This package was debianized by Florian Ragwitz <rafl@debianforum.de> on
 Sat, 22 Oct 2005 20:53:19 +0200.
 
-It was downloaded from http://dnspython.org/
+It was downloaded from https://pypi.org/project/dnspython/
 
 Upstream Author: Bob Halley <halley@dnspython.org>
 
 License:
 
-Copyright (C) 2001-2007, 2009-2011 Nominum, Inc.
+Copyright (C) 2001-2007, 2009-2017 Nominum, Inc.
 
 Permission to use, copy, modify, and distribute this software and its
 documentation for any purpose with or without fee is hereby granted,

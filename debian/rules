@@ -1,15 +1,8 @@
 #!/usr/bin/make -f
 #export DH_VERBOSE=1
 
-# As currently defined, tests can't be automatically run and be policy
-# compliant due to network access.  Uncomment this to run tests in a
-# local build
-#RUN_TEST=dh_auto_test
-
+export NO_INTERNET=1
 export PYBUILD_NAME=dnspython
 
 %:
 	dh $@ --with python3 --buildsystem=pybuild
-
-override_dh_auto_test:
-	$(RUN_TEST)
