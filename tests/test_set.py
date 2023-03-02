@@ -23,8 +23,8 @@ import dns.set
 # for convenience
 S = dns.set.Set
 
-class SetTestCase(unittest.TestCase):
 
+class SetTestCase(unittest.TestCase):
     def testLen1(self):
         s1 = S()
         self.assertEqual(len(s1), 0)
@@ -109,6 +109,43 @@ class SetTestCase(unittest.TestCase):
         e = S([])
         self.assertEqual(s1 - s2, e)
 
+    def testSymmetricDifference1(self):
+        s1 = S([1, 2, 3])
+        s2 = S([5, 4])
+        e = S([1, 2, 3, 4, 5])
+        self.assertEqual(s1 ^ s2, e)
+
+    def testSymmetricDifference2(self):
+        s1 = S([1, 2, 3])
+        s2 = S([])
+        e = S([1, 2, 3])
+        self.assertEqual(s1 ^ s2, e)
+
+    def testSymmetricDifference3(self):
+        s1 = S([1, 2, 3])
+        s2 = S([3, 2])
+        e = S([1])
+        self.assertEqual(s1 ^ s2, e)
+
+    def testSymmetricDifference4(self):
+        s1 = S([1, 2, 3])
+        s2 = S([3, 2, 1])
+        e = S([])
+        self.assertEqual(s1 ^ s2, e)
+
+    def testSymmetricDifference5(self):
+        s1 = S([1, 2, 3])
+        s2 = S([2, 4])
+        s1 ^= s2
+        e = S([1, 3, 4])
+        self.assertEqual(s1, e)
+
+    def testSymmetricDifference6(self):
+        s1 = S([1, 2, 3])
+        s1 ^= s1
+        e = S([])
+        self.assertEqual(s1, e)
+
     def testSubset1(self):
         s1 = S([1, 2, 3])
         s2 = S([3, 2, 1])
@@ -166,6 +203,35 @@ class SetTestCase(unittest.TestCase):
         s1 = S([1, 2, 3])
         s2 = S([1, 4])
         self.assertTrue(not s1.issuperset(s2))
+
+    def testDisjoint1(self):
+        s1 = S([1, 2, 3])
+        s2 = S([4])
+        self.assertTrue(s1.isdisjoint(s2))
+
+    def testDisjoint2(self):
+        s1 = S([1, 2, 3])
+        s2 = S([2, 4])
+        self.assertTrue(not s1.isdisjoint(s2))
+
+    def testDisjoint3(self):
+        s1 = S([1, 2, 3])
+        s2 = S([])
+        self.assertTrue(s1.isdisjoint(s2))
+
+    def testPop(self):
+        original = S([1, 2, 3])
+        s1 = original.copy()
+        item = s1.pop()
+        self.assertTrue(len(s1) == 2)
+        self.assertTrue(item in original)
+        item = s1.pop()
+        self.assertTrue(len(s1) == 1)
+        self.assertTrue(item in original)
+        item = s1.pop()
+        self.assertTrue(len(s1) == 0)
+        self.assertTrue(item in original)
+        self.assertRaises(KeyError, lambda: s1.pop())
 
     def testUpdate1(self):
         s1 = S([1, 2, 3])
@@ -235,6 +301,8 @@ class SetTestCase(unittest.TestCase):
         s = S([1, 2, 3])
         self.assertRaises(ValueError, lambda: s.union_update(1))
         self.assertRaises(ValueError, lambda: s.intersection_update(1))
+        self.assertRaises(ValueError, lambda: s.difference_update(1))
+        self.assertRaises(ValueError, lambda: s.symmetric_difference_update(1))
 
     def testSelfUpdates(self):
         expected = S([1, 2, 3])
@@ -251,6 +319,10 @@ class SetTestCase(unittest.TestCase):
         self.assertRaises(ValueError, lambda: s.issubset(123))
         self.assertRaises(ValueError, lambda: s.issuperset(123))
 
+    def testBadDisjoint(self):
+        s = S([1, 2, 3])
+        self.assertRaises(ValueError, lambda: s.isdisjoint(123))
+
     def testIncrementalOperators(self):
         s = S([1, 2, 3])
         s += S([5, 4])
@@ -262,5 +334,6 @@ class SetTestCase(unittest.TestCase):
         s &= S([1, 2])
         self.assertEqual(s, S([1, 2]))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

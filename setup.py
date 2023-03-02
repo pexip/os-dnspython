@@ -1,86 +1,42 @@
-#!/usr/bin/env python3
-#
-# Copyright (C) Dnspython Contributors, see LICENSE for text of ISC license
-#
-# Copyright (C) 2003-2007, 2009-2011 Nominum, Inc.
-#
-# Permission to use, copy, modify, and distribute this software and its
-# documentation for any purpose with or without fee is hereby granted,
-# provided that the above copyright notice and this permission notice
-# appear in all copies.
-#
-# THE SOFTWARE IS PROVIDED "AS IS" AND NOMINUM DISCLAIMS ALL WARRANTIES
-# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL NOMINUM BE LIABLE FOR
-# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
-# OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-import sys
+# -*- coding: utf-8 -*-
 from setuptools import setup
 
-version = '2.0.0'
+packages = \
+['dns',
+ 'dns.quic',
+ 'dns.rdtypes',
+ 'dns.rdtypes.ANY',
+ 'dns.rdtypes.CH',
+ 'dns.rdtypes.IN']
 
-try:
-    sys.argv.remove("--cython-compile")
-except ValueError:
-    compile_cython = False
-else:
-    compile_cython = True
-    from Cython.Build import cythonize
-    ext_modules = cythonize(['dns/*.py', 'dns/rdtypes/*.py', 'dns/rdtypes/*/*.py'],
-                            language_level='3')
+package_data = \
+{'': ['*']}
 
-kwargs = {
-    'name' : 'dnspython',
-    'version' : version,
-    'description' : 'DNS toolkit',
-    'long_description' : \
-    """dnspython is a DNS toolkit for Python. It supports almost all
-record types. It can be used for queries, zone transfers, and dynamic
-updates.  It supports TSIG authenticated messages and EDNS0.
+extras_require = \
+{'curio': ['curio>=1.2,<2.0', 'sniffio>=1.1,<2.0'],
+ 'dnssec': ['cryptography>=2.6,<40.0'],
+ 'doh': ['requests-toolbelt>=0.9.1,<0.11.0', 'requests>=2.23.0,<3.0.0'],
+ 'doh:python_full_version >= "3.6.2"': ['httpx>=0.21.1', 'h2>=4.1.0'],
+ 'doq': ['aioquic>=0.9.20'],
+ 'idna': ['idna>=2.1,<4.0'],
+ 'trio': ['trio>=0.14,<0.23'],
+ 'wmi': ['wmi>=1.5.1,<2.0.0']}
 
-dnspython provides both high and low level access to DNS. The high
-level classes perform queries for data of a given name, type, and
-class, and return an answer set.  The low level classes allow
-direct manipulation of DNS zones, messages, names, and records.""",
-    'author' : 'Bob Halley',
-    'author_email' : 'halley@dnspython.org',
-    'license' : 'ISC',
-    'url' : 'http://www.dnspython.org',
-    'packages' : ['dns', 'dns.rdtypes', 'dns.rdtypes.IN', 'dns.rdtypes.ANY',
-                  'dns.rdtypes.CH'],
-    'package_data' : {'dns': ['py.typed']},
-    'download_url' : \
-    'http://www.dnspython.org/kits/{}/dnspython-{}.tar.gz'.format(version, version),
-    'classifiers' : [
-        "Development Status :: 5 - Production/Stable",
-        "Intended Audience :: Developers",
-        "Intended Audience :: System Administrators",
-        "License :: OSI Approved :: ISC License (ISCL)",
-        "Operating System :: POSIX",
-        "Operating System :: Microsoft :: Windows",
-        "Programming Language :: Python",
-        "Topic :: Internet :: Name Service (DNS)",
-        "Topic :: Software Development :: Libraries :: Python Modules",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        ],
-    'python_requires': '>=3.6',
-    'test_suite': 'tests',
-    'provides': ['dns'],
-    'extras_require': {
-        'DOH': ['requests', 'requests-toolbelt'],
-        'IDNA': ['idna>=2.1'],
-        'DNSSEC': ['cryptography>=2.6'],
-        'trio': ['trio>=0.14.0', 'sniffio>=1.1'],
-        'curio': ['curio>=1.2', 'sniffio>=1.1'],
-        },
-    'ext_modules': ext_modules if compile_cython else None,
-    'zip_safe': False if compile_cython else None,
-    }
+setup_kwargs = {
+    'name': 'dnspython',
+    'version': '2.3.0',
+    'description': 'DNS toolkit',
+    'long_description': "# dnspython\n\n[![Build Status](https://github.com/rthalley/dnspython/actions/workflows/python-package.yml/badge.svg)](https://github.com/rthalley/dnspython/actions/)\n[![Documentation Status](https://readthedocs.org/projects/dnspython/badge/?version=latest)](https://dnspython.readthedocs.io/en/latest/?badge=latest)\n[![PyPI version](https://badge.fury.io/py/dnspython.svg)](https://badge.fury.io/py/dnspython)\n[![License: ISC](https://img.shields.io/badge/License-ISC-brightgreen.svg)](https://opensource.org/licenses/ISC)\n[![Coverage](https://codecov.io/github/rthalley/dnspython/coverage.svg?branch=master)](https://codecov.io/github/rthalley/dnspython)\n[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)\n\n## INTRODUCTION\n\ndnspython is a DNS toolkit for Python. It supports almost all record types. It\ncan be used for queries, zone transfers, and dynamic updates. It supports TSIG\nauthenticated messages and EDNS0.\n\ndnspython provides both high and low level access to DNS. The high level classes\nperform queries for data of a given name, type, and class, and return an answer\nset. The low level classes allow direct manipulation of DNS zones, messages,\nnames, and records.\n\nTo see a few of the ways dnspython can be used, look in the `examples/`\ndirectory.\n\ndnspython is a utility to work with DNS, `/etc/hosts` is thus not used. For\nsimple forward DNS lookups, it's better to use `socket.getaddrinfo()` or\n`socket.gethostbyname()`.\n\ndnspython originated at Nominum where it was developed\nto facilitate the testing of DNS software.\n\n## ABOUT THIS RELEASE\n\nThis is dnspython 2.3.0.\nPlease read\n[What's New](https://dnspython.readthedocs.io/en/stable/whatsnew.html) for\ninformation about the changes in this release.\n\n## INSTALLATION\n\n* Many distributions have dnspython packaged for you, so you should\n  check there first.\n* If you have pip installed, you can do `pip install dnspython`\n* If not just download the source file and unzip it, then run\n  `sudo python setup.py install`\n* To install the latest from the master branch, run `pip install git+https://github.com/rthalley/dnspython.git`\n\nDnspython's default installation does not depend on any modules other than\nthose in the Python standard library.  To use some features, additional modules\nmust be installed.  For convenience, pip options are defined for the\nrequirements.\n\nIf you want to use DNS-over-HTTPS, run\n`pip install dnspython[doh]`.\n\nIf you want to use DNSSEC functionality, run\n`pip install dnspython[dnssec]`.\n\nIf you want to use internationalized domain names (IDNA)\nfunctionality, you must run\n`pip install dnspython[idna]`\n\nIf you want to use the Trio asynchronous I/O package, run\n`pip install dnspython[trio]`.\n\nIf you want to use the Curio asynchronous I/O package, run\n`pip install dnspython[curio]`.\n\nIf you want to use WMI on Windows to determine the active DNS settings\ninstead of the default registry scanning method, run\n`pip install dnspython[wmi]`.\n\nIf you want to try the experimental DNS-over-QUIC code, run\n`pip install dnspython[doq]`.\n\nNote that you can install any combination of the above, e.g.:\n`pip install dnspython[doh,dnssec,idna]`\n\n### Notices\n\nPython 2.x support ended with the release of 1.16.0.  Dnspython 2.0.0 through\n2.2.x support Python 3.6 and later.  As of dnspython 2.3.0, the minimum\nsupported Python version will be 3.7.  We plan to align future support with the\nlifetime of the Python 3 versions.\n\nDocumentation has moved to\n[dnspython.readthedocs.io](https://dnspython.readthedocs.io).\n",
+    'author': 'Bob Halley',
+    'author_email': 'halley@dnspython.org',
+    'maintainer': 'None',
+    'maintainer_email': 'None',
+    'url': 'https://www.dnspython.org',
+    'packages': packages,
+    'package_data': package_data,
+    'extras_require': extras_require,
+    'python_requires': '>=3.7,<4.0',
+}
 
-setup(**kwargs)
+
+setup(**setup_kwargs)

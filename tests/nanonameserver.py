@@ -13,22 +13,25 @@ import dns.asyncquery
 import dns.message
 import dns.rcode
 
+
 async def read_exactly(stream, count):
     """Read the specified number of bytes from stream.  Keep trying until we
     either get the desired amount, or we hit EOF.
     """
-    s = b''
+    s = b""
     while count > 0:
         n = await stream.receive_some(count)
-        if n == b'':
+        if n == b"":
             raise EOFError
         count = count - len(n)
         s = s + n
     return s
 
+
 class ConnectionType(enum.IntEnum):
     UDP = 1
     TCP = 2
+
 
 class Request:
     def __init__(self, message, wire, peer, local, connection_type):
@@ -54,6 +57,7 @@ class Request:
     def qtype(self):
         return self.question.rdtype
 
+
 class Server(threading.Thread):
 
     """The nanoserver is a nameserver skeleton suitable for faking a DNS
@@ -75,9 +79,16 @@ class Server(threading.Thread):
     called.
     """
 
-    def __init__(self, address='127.0.0.1', port=0, enable_udp=True,
-                 enable_tcp=True, use_thread=True, origin=None,
-                 keyring=None):
+    def __init__(
+        self,
+        address="127.0.0.1",
+        port=0,
+        enable_udp=True,
+        enable_tcp=True,
+        use_thread=True,
+        origin=None,
+        keyring=None,
+    ):
         super().__init__()
         self.address = address
         self.port = port
@@ -102,23 +113,24 @@ class Server(threading.Thread):
         try:
             while True:
                 if self.enable_udp:
-                    self.udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM,
-                                             0)
+                    self.udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
                     self.udp.bind((self.address, self.port))
                     self.udp_address = self.udp.getsockname()
                 if self.enable_tcp:
-                    self.tcp = socket.socket(socket.AF_INET,
-                                             socket.SOCK_STREAM, 0)
-                    self.tcp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,
-                                        1)
+                    self.tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+                    self.tcp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                     if self.port == 0 and self.enable_udp:
                         try:
                             self.tcp.bind((self.address, self.udp_address[1]))
-                        except OSError as e:
-                            if e.errno == errno.EADDRINUSE and \
-                               len(open_udp_sockets) < 100:
+                        except OSError:
+                            # We can get EADDRINUSE and other errors like EPERM, so
+                            # we just remember to close the UDP socket later, try again,
+                            # and hope we get a better port.  You'd think the OS would
+                            # know better...
+                            if len(open_udp_sockets) < 100:
                                 open_udp_sockets.append(self.udp)
                                 continue
+                            # 100 tries to find a port is enough!  Give up!
                             raise
                     else:
                         self.tcp.bind((self.address, self.port))
@@ -160,9 +172,9 @@ class Server(threading.Thread):
         finally:
             raise EOFError
 
-    def handle(self, message, peer, connection_type):
+    def handle(self, request):
         #
-        # Handle message 'message'.  Override this method to change
+        # Handle request 'request'.  Override this method to change
         # how the server behaves.
         #
         # The return value is either a dns.message.Message, a bytes,
@@ -173,12 +185,9 @@ class Server(threading.Thread):
         # returned, then the output code will run for each returned
         # item.
         #
-        try:
-            r = dns.message.make_response(message)
-            r.set_rcode(dns.rcode.REFUSED)
-            return r
-        except Exception:
-            return None
+        r = dns.message.make_response(request.message)
+        r.set_rcode(dns.rcode.REFUSED)
+        return r
 
     def maybe_listify(self, thing):
         if isinstance(thing, list):
@@ -218,7 +227,7 @@ class Server(threading.Thread):
             except Exception:
                 # We could try to make a response from only the header
                 # if dnspython had a header_only option to
-                # from_wire(), or if we truncated wire outselves, but
+                # from_wire(), or if we truncated wire ourselves, but
                 # for now we just drop.
                 return
         try:
@@ -240,7 +249,7 @@ class Server(threading.Thread):
                 out = thing.to_wire(self.origin, multi=multi, tsig_ctx=tsig_ctx)
                 tsig_ctx = thing.tsig_ctx
                 yield out
-            else:
+            elif thing is not None:
                 yield thing
 
     async def serve_udp(self):
@@ -250,8 +259,7 @@ class Server(threading.Thread):
             while True:
                 try:
                     (wire, peer) = await sock.recvfrom(65535)
-                    for wire in self.handle_wire(wire, peer, local,
-                                                 ConnectionType.UDP):
+                    for wire in self.handle_wire(wire, peer, local, ConnectionType.UDP):
                         await sock.sendto(wire, peer)
                 except Exception:
                     pass
@@ -264,8 +272,7 @@ class Server(threading.Thread):
                 ldata = await read_exactly(stream, 2)
                 (l,) = struct.unpack("!H", ldata)
                 wire = await read_exactly(stream, l)
-                for wire in self.handle_wire(wire, peer, local,
-                                             ConnectionType.TCP):
+                for wire in self.handle_wire(wire, peer, local, ConnectionType.TCP):
                     l = len(wire)
                     stream_message = struct.pack("!H", l) + wire
                     await stream.send_all(stream_message)
@@ -277,8 +284,12 @@ class Server(threading.Thread):
             self.tcp = None  # we own cleanup
             listener = trio.SocketListener(sock)
             async with trio.open_nursery() as nursery:
-                serve = functools.partial(trio.serve_listeners, self.serve_tcp,
-                                          [listener], handler_nursery=nursery)
+                serve = functools.partial(
+                    trio.serve_listeners,
+                    self.serve_tcp,
+                    [listener],
+                    handler_nursery=nursery,
+                )
                 nursery.start_soon(serve)
 
     async def main(self):
@@ -295,8 +306,9 @@ class Server(threading.Thread):
 
     def run(self):
         if not self.use_thread:
-            raise RuntimeError('start() called on a use_thread=False Server')
+            raise RuntimeError("start() called on a use_thread=False Server")
         trio.run(self.main)
+
 
 if __name__ == "__main__":
     import sys
@@ -305,8 +317,10 @@ if __name__ == "__main__":
     async def trio_main():
         try:
             with Server(port=5354, use_thread=False) as server:
-                print(f'Trio mode: listening on UDP: {server.udp_address}, ' +
-                      f'TCP: {server.tcp_address}')
+                print(
+                    f"Trio mode: listening on UDP: {server.udp_address}, "
+                    + f"TCP: {server.tcp_address}"
+                )
                 async with trio.open_nursery() as nursery:
                     nursery.start_soon(server.main)
         except Exception:
@@ -314,11 +328,13 @@ if __name__ == "__main__":
 
     def threaded_main():
         with Server(port=5354) as server:
-            print(f'Thread Mode: listening on UDP: {server.udp_address}, ' +
-                  f'TCP: {server.tcp_address}')
+            print(
+                f"Thread Mode: listening on UDP: {server.udp_address}, "
+                + f"TCP: {server.tcp_address}"
+            )
             time.sleep(300)
 
-    if len(sys.argv) > 1 and sys.argv[1] == 'trio':
+    if len(sys.argv) > 1 and sys.argv[1] == "trio":
         trio.run(trio_main)
     else:
         threaded_main()
