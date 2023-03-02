@@ -1,9 +1,11 @@
 Tests: py3
 Depends: ca-certificates,
          python3-all,
-         python3-setuptools,
          python3-cryptography,
+         python3-h2,
+         python3-httpx,
          python3-idna,
+         python3-pytest,
          python3-requests,
          python3-requests-toolbelt,
          python3-sniffio,
