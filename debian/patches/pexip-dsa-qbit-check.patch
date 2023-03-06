@@ -1,0 +1,11 @@
+--- a/dns/dnssec.py
++++ b/dns/dnssec.py
+@@ -921,6 +921,8 @@
+         dsa_t = (public_key.key_size // 8 - 64) // 8
+         if dsa_t > 8:
+             raise ValueError("unsupported DSA key size")
++        if pn.parameter_numbers.q > 2**160:
++            raise ValueError("unsupported qbit size")
+         octets = 64 + dsa_t * 8
+         res = struct.pack("!B", dsa_t)
+         res += pn.parameter_numbers.q.to_bytes(20, "big")

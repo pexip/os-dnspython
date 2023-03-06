@@ -1,3 +1,9 @@
+dnspython (2.3.0-2) pexip; urgency=medium
+
+  * DNS SEC: add check for invalid DSA qbit size
+
+ -- Huw Jones <huw@pexip.com>  Mon, 06 Mar 2023 17:57:08 +0000
+
 dnspython (2.3.0-1) unstable; urgency=medium
 
   * Upload to unstable
