@@ -1,0 +1,21 @@
+--- a/dns/dnssec.py
++++ b/dns/dnssec.py
+@@ -921,6 +921,8 @@
+         dsa_t = (public_key.key_size // 8 - 64) // 8
+         if dsa_t > 8:
+             raise ValueError("unsupported DSA key size")
++        if pn.parameter_numbers.q > 2**160:
++            raise ValueError("unsupported qbit size")
+         octets = 64 + dsa_t * 8
+         res = struct.pack("!B", dsa_t)
+         res += pn.parameter_numbers.q.to_bytes(20, "big")
+--- a/tests/test_dnssec.py
++++ b/tests/test_dnssec.py
+@@ -1186,6 +1186,7 @@
+         )
+         self._test_signature(key, dns.dnssec.Algorithm.RSASHA256, abs_soa)
+ 
++    @unittest.skip("RFC8624 3.1: use of DSA is MUST NOT")
+     def testSignatureDSA(self):  # type: () -> None
+         key = dsa.generate_private_key(key_size=1024)
+         self._test_signature(

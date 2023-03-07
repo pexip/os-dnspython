@@ -1,6 +1,8 @@
 dnspython (2.3.0-2pexip1) pexip; urgency=medium
 
   * New upstream release
+  * DNS SEC: add check for invalid DSA qbit size
+  * DNS SEC: skip DSA test due to RFC 8624 3.1 and newer OpenSSL versions
 
  -- Huw Jones <huw@pexip.com>  Mon, 06 Mar 2023 17:57:08 +0000
 
