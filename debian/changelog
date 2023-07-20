@@ -1,3 +1,9 @@
+dnspython (2.3.0-2pexip2) pexip; urgency=medium
+
+  * d/p/tc-flag-before-parse.patch: drop; unnecessary since 2.0.0
+
+ -- John-Mark Bell <jmb@pexip.com>  Thu, 20 Jul 2023 12:39:04 +0100
+
 dnspython (2.3.0-2pexip1) pexip; urgency=medium
 
   * New upstream release
