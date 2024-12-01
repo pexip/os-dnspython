@@ -18,7 +18,6 @@
 import asyncio
 import random
 import socket
-import sys
 import time
 import unittest
 
@@ -28,6 +27,8 @@ import dns.asyncresolver
 import dns.message
 import dns.name
 import dns.query
+import dns.quic
+import dns.rcode
 import dns.rdataclass
 import dns.rdatatype
 import dns.resolver
@@ -53,16 +54,34 @@ try:
 except Exception:
     pass
 
+# Docker too!  It not only has problems with dangling CNAME, but also says NXDOMAIN when
+# it should say no error no data.
+_is_docker = tests.util.is_docker()
+
 query_addresses = []
+family = socket.AF_UNSPEC
 if tests.util.have_ipv4():
     query_addresses.append("8.8.8.8")
+    family = socket.AF_INET
 if tests.util.have_ipv6():
+    have_v6 = True
+    if family == socket.AF_INET:
+        # we have both working, go back to UNSPEC
+        family = socket.AF_UNSPEC
+    else:
+        # v6 only
+        family = socket.AF_INET6
     query_addresses.append("2001:4860:4860::8888")
 
 KNOWN_ANYCAST_DOH_RESOLVER_URLS = [
     "https://cloudflare-dns.com/dns-query",
     "https://dns.google/dns-query",
     # 'https://dns11.quad9.net/dns-query',
+]
+
+KNOWN_ANYCAST_DOH3_RESOLVER_URLS = [
+    "https://cloudflare-dns.com/dns-query",
+    "https://dns.google/dns-query",
 ]
 
 
@@ -162,8 +181,6 @@ class MiscQuery(unittest.TestCase):
 
 @unittest.skipIf(not tests.util.is_internet_reachable(), "Internet not reachable")
 class AsyncTests(unittest.TestCase):
-    connect_udp = sys.platform == "win32"
-
     def setUp(self):
         self.backend = dns.asyncbackend.set_default_backend("asyncio")
 
@@ -187,6 +204,52 @@ class AsyncTests(unittest.TestCase):
         dnsgoogle = dns.name.from_text("dns.google.")
         self.assertEqual(answer[0].target, dnsgoogle)
 
+    def testResolveName(self):
+        async def run1():
+            return await dns.asyncresolver.resolve_name("dns.google.")
+
+        answers = self.async_run(run1)
+        seen = set(answers.addresses())
+        self.assertEqual(len(seen), 4)
+        self.assertIn("8.8.8.8", seen)
+        self.assertIn("8.8.4.4", seen)
+        self.assertIn("2001:4860:4860::8844", seen)
+        self.assertIn("2001:4860:4860::8888", seen)
+
+        async def run2():
+            return await dns.asyncresolver.resolve_name("dns.google.", socket.AF_INET)
+
+        answers = self.async_run(run2)
+        seen = set(answers.addresses())
+        self.assertEqual(len(seen), 2)
+        self.assertIn("8.8.8.8", seen)
+        self.assertIn("8.8.4.4", seen)
+
+        async def run3():
+            return await dns.asyncresolver.resolve_name("dns.google.", socket.AF_INET6)
+
+        answers = self.async_run(run3)
+        seen = set(answers.addresses())
+        self.assertEqual(len(seen), 2)
+        self.assertIn("2001:4860:4860::8844", seen)
+        self.assertIn("2001:4860:4860::8888", seen)
+
+        async def run4():
+            await dns.asyncresolver.resolve_name("nxdomain.dnspython.org")
+
+        with self.assertRaises(dns.resolver.NXDOMAIN):
+            self.async_run(run4)
+
+        async def run5():
+            await dns.asyncresolver.resolve_name(
+                dns.reversename.from_address("8.8.8.8")
+            )
+
+        if not _is_docker:
+            # docker returns NXDOMAIN!
+            with self.assertRaises(dns.resolver.NoAnswer):
+                self.async_run(run5)
+
     def testCanonicalNameNoCNAME(self):
         cname = dns.name.from_text("www.google.com")
 
@@ -204,7 +267,9 @@ class AsyncTests(unittest.TestCase):
 
         self.assertEqual(self.async_run(run), cname)
 
-    @unittest.skipIf(_systemd_resolved_present, "systemd-resolved in use")
+    @unittest.skipIf(
+        _systemd_resolved_present or _is_docker, "systemd-resolved or docker in use"
+    )
     def testCanonicalNameDangling(self):
         name = dns.name.from_text("dangling-cname.dnspython.org")
         cname = dns.name.from_text("dangling-target.dnspython.org")
@@ -274,12 +339,12 @@ class AsyncTests(unittest.TestCase):
             qname = dns.name.from_text("dns.google.")
 
             async def run():
-                if self.connect_udp:
-                    dtuple = (address, 53)
-                else:
-                    dtuple = None
                 async with await self.backend.make_socket(
-                    dns.inet.af_for_address(address), socket.SOCK_DGRAM, 0, None, dtuple
+                    dns.inet.af_for_address(address),
+                    socket.SOCK_DGRAM,
+                    0,
+                    None,
+                    None,
                 ) as s:
                     q = dns.message.make_query(qname, dns.rdatatype.A)
                     return await dns.asyncquery.udp(q, address, sock=s, timeout=2)
@@ -356,6 +421,28 @@ class AsyncTests(unittest.TestCase):
             self.assertTrue("8.8.4.4" in seen)
 
     @unittest.skipIf(not _ssl_available, "SSL not available")
+    def testQueryTLSWithContext(self):
+        for address in query_addresses:
+            qname = dns.name.from_text("dns.google.")
+
+            async def run():
+                ssl_context = ssl.create_default_context()
+                ssl_context.check_hostname = True
+                q = dns.message.make_query(qname, dns.rdatatype.A)
+                return await dns.asyncquery.tls(
+                    q, address, timeout=2, ssl_context=ssl_context
+                )
+
+            response = self.async_run(run)
+            rrs = response.get_rrset(
+                response.answer, qname, dns.rdataclass.IN, dns.rdatatype.A
+            )
+            self.assertTrue(rrs is not None)
+            seen = set([rdata.address for rdata in rrs])
+            self.assertTrue("8.8.8.8" in seen)
+            self.assertTrue("8.8.4.4" in seen)
+
+    @unittest.skipIf(not _ssl_available, "SSL not available")
     def testQueryTLSWithSocket(self):
         for address in query_addresses:
             qname = dns.name.from_text("dns.google.")
@@ -393,7 +480,7 @@ class AsyncTests(unittest.TestCase):
 
             async def run():
                 q = dns.message.make_query(qname, dns.rdatatype.DNSKEY)
-                return await dns.asyncquery.udp_with_fallback(q, address, timeout=2)
+                return await dns.asyncquery.udp_with_fallback(q, address, timeout=4)
 
             (_, tcp) = self.async_run(run)
             self.assertTrue(tcp)
@@ -410,9 +497,6 @@ class AsyncTests(unittest.TestCase):
             self.assertFalse(tcp)
 
     def testUDPReceiveQuery(self):
-        if self.connect_udp:
-            self.skipTest("test needs connectionless sockets")
-
         async def run():
             async with await self.backend.make_socket(
                 socket.AF_INET, socket.SOCK_DGRAM, source=("127.0.0.1", 0)
@@ -434,9 +518,6 @@ class AsyncTests(unittest.TestCase):
         self.assertEqual(sender_address, recv_address)
 
     def testUDPReceiveTimeout(self):
-        if self.connect_udp:
-            self.skipTest("test needs connectionless sockets")
-
         async def arun():
             async with await self.backend.make_socket(
                 socket.AF_INET, socket.SOCK_DGRAM, 0, ("127.0.0.1", 0)
@@ -456,53 +537,80 @@ class AsyncTests(unittest.TestCase):
 
     @unittest.skipIf(not dns.query._have_httpx, "httpx not available")
     def testDOHGetRequest(self):
-        if self.backend.name() == "curio":
-            self.skipTest("anyio dropped curio support")
-
         async def run():
             nameserver_url = random.choice(KNOWN_ANYCAST_DOH_RESOLVER_URLS)
             q = dns.message.make_query("example.com.", dns.rdatatype.A)
-            r = await dns.asyncquery.https(q, nameserver_url, post=False, timeout=4)
+            r = await dns.asyncquery.https(
+                q, nameserver_url, post=False, timeout=4, family=family
+            )
             self.assertTrue(q.is_response(r))
 
         self.async_run(run)
 
     @unittest.skipIf(not dns.query._have_httpx, "httpx not available")
-    def testDOHGetRequestHttp1(self):
-        if self.backend.name() == "curio":
-            self.skipTest("anyio dropped curio support")
-
-        async def run():
-            saved_have_http2 = dns.query._have_http2
-            try:
-                dns.query._have_http2 = False
-                nameserver_url = random.choice(KNOWN_ANYCAST_DOH_RESOLVER_URLS)
-                q = dns.message.make_query("example.com.", dns.rdatatype.A)
-                r = await dns.asyncquery.https(q, nameserver_url, post=False, timeout=4)
-                self.assertTrue(q.is_response(r))
-            finally:
-                dns.query._have_http2 = saved_have_http2
-
-        self.async_run(run)
-
-    @unittest.skipIf(not dns.query._have_httpx, "httpx not available")
     def testDOHPostRequest(self):
-        if self.backend.name() == "curio":
-            self.skipTest("anyio dropped curio support")
-
         async def run():
             nameserver_url = random.choice(KNOWN_ANYCAST_DOH_RESOLVER_URLS)
             q = dns.message.make_query("example.com.", dns.rdatatype.A)
-            r = await dns.asyncquery.https(q, nameserver_url, post=True, timeout=4)
+            r = await dns.asyncquery.https(
+                q, nameserver_url, post=True, timeout=4, family=family
+            )
+            self.assertTrue(q.is_response(r))
+
+        self.async_run(run)
+
+    @unittest.skipIf(not dns.quic.have_quic, "aioquic not available")
+    def testDoH3GetRequest(self):
+        async def run():
+            nameserver_url = random.choice(KNOWN_ANYCAST_DOH3_RESOLVER_URLS)
+            q = dns.message.make_query("dns.google.", dns.rdatatype.A)
+            r = await dns.asyncquery.https(
+                q,
+                nameserver_url,
+                post=False,
+                timeout=4,
+                family=family,
+                http_version=dns.asyncquery.HTTPVersion.H3,
+            )
+            self.assertTrue(q.is_response(r))
+
+        self.async_run(run)
+
+    @unittest.skipIf(not dns.quic.have_quic, "aioquic not available")
+    def TestDoH3PostRequest(self):
+        async def run():
+            nameserver_url = random.choice(KNOWN_ANYCAST_DOH3_RESOLVER_URLS)
+            q = dns.message.make_query("dns.google.", dns.rdatatype.A)
+            r = await dns.asyncquery.https(
+                q,
+                nameserver_url,
+                post=True,
+                timeout=4,
+                family=family,
+                http_version=dns.asyncquery.HTTPVersion.H3,
+            )
+            self.assertTrue(q.is_response(r))
+
+        self.async_run(run)
+
+    @unittest.skipIf(not dns.quic.have_quic, "aioquic not available")
+    def TestDoH3QueryIP(self):
+        async def run():
+            nameserver_ip = "8.8.8.8"
+            q = dns.message.make_query("example.com.", dns.rdatatype.A)
+            r = dns.asyncquery.https(
+                q,
+                nameserver_ip,
+                post=False,
+                timeout=4,
+                http_version=dns.asyncquery.HTTPVersion.H3,
+            )
             self.assertTrue(q.is_response(r))
 
         self.async_run(run)
 
     @unittest.skipIf(not dns.query._have_httpx, "httpx not available")
     def testResolverDOH(self):
-        if self.backend.name() == "curio":
-            self.skipTest("anyio dropped curio support")
-
         async def run():
             res = dns.asyncresolver.Resolver(configure=False)
             res.nameservers = ["https://dns.google/dns-query"]
@@ -510,6 +618,28 @@ class AsyncTests(unittest.TestCase):
             seen = set([rdata.address for rdata in answer])
             self.assertTrue("8.8.8.8" in seen)
             self.assertTrue("8.8.4.4" in seen)
+
+        self.async_run(run)
+
+    @unittest.skipIf(not tests.util.have_ipv4(), "IPv4 not reachable")
+    def testResolveAtAddress(self):
+        async def run():
+            answer = await dns.asyncresolver.resolve_at("8.8.8.8", "dns.google.", "A")
+            seen = set([rdata.address for rdata in answer])
+            self.assertIn("8.8.8.8", seen)
+            self.assertIn("8.8.4.4", seen)
+
+        self.async_run(run)
+
+    @unittest.skipIf(not tests.util.have_ipv4(), "IPv4 not reachable")
+    def testResolveAtName(self):
+        async def run():
+            answer = await dns.asyncresolver.resolve_at(
+                "dns.google", "dns.google.", "A", family=socket.AF_INET
+            )
+            seen = set([rdata.address for rdata in answer])
+            self.assertIn("8.8.8.8", seen)
+            self.assertIn("8.8.4.4", seen)
 
         self.async_run(run)
 
@@ -525,8 +655,6 @@ class AsyncTests(unittest.TestCase):
 
 @unittest.skipIf(not tests.util.is_internet_reachable(), "Internet not reachable")
 class AsyncioOnlyTests(unittest.TestCase):
-    connect_udp = sys.platform == "win32"
-
     def setUp(self):
         self.backend = dns.asyncbackend.set_default_backend("asyncio")
 
@@ -534,8 +662,6 @@ class AsyncioOnlyTests(unittest.TestCase):
         return asyncio.run(afunc())
 
     def testUseAfterTimeout(self):
-        if self.connect_udp:
-            self.skipTest("test needs connectionless sockets")
         # Test #843 fix.
         async def run():
             qname = dns.name.from_text("dns.google")
@@ -570,8 +696,8 @@ class AsyncioOnlyTests(unittest.TestCase):
 
 
 try:
-    import trio
     import sniffio
+    import trio
 
     class TrioAsyncDetectionTests(AsyncDetectionTests):
         sniff_result = "trio"
@@ -586,8 +712,6 @@ try:
             return trio.run(afunc)
 
     class TrioAsyncTests(AsyncTests):
-        connect_udp = False
-
         def setUp(self):
             self.backend = dns.asyncbackend.set_default_backend("trio")
 
@@ -597,36 +721,242 @@ try:
 except ImportError:
     pass
 
-try:
-    import curio
-    import sniffio
 
-    @unittest.skipIf(sys.platform == "win32", "curio does not work in windows CI")
-    class CurioAsyncDetectionTests(AsyncDetectionTests):
-        sniff_result = "curio"
+class MockSock:
+    def __init__(self, wire1, from1, wire2, from2):
+        self.family = socket.AF_INET
+        self.first_time = True
+        self.wire1 = wire1
+        self.from1 = from1
+        self.wire2 = wire2
+        self.from2 = from2
 
-        def async_run(self, afunc):
-            with curio.Kernel() as kernel:
-                return kernel.run(afunc, shutdown=True)
+    async def sendto(self, data, where, timeout):
+        return len(data)
 
-    @unittest.skipIf(sys.platform == "win32", "curio does not work in windows CI")
-    class CurioNoSniffioAsyncDetectionTests(NoSniffioAsyncDetectionTests):
-        expect_raise = True
+    async def recvfrom(self, bufsize, expiration):
+        if self.first_time:
+            self.first_time = False
+            return self.wire1, self.from1
+        else:
+            return self.wire2, self.from2
 
-        def async_run(self, afunc):
-            with curio.Kernel() as kernel:
-                return kernel.run(afunc, shutdown=True)
 
-    @unittest.skipIf(sys.platform == "win32", "curio does not work in windows CI")
-    class CurioAsyncTests(AsyncTests):
-        connect_udp = False
+class IgnoreErrors(unittest.TestCase):
+    def setUp(self):
+        self.q = dns.message.make_query("example.", "A")
+        self.good_r = dns.message.make_response(self.q)
+        self.good_r.set_rcode(dns.rcode.NXDOMAIN)
+        self.good_r_wire = self.good_r.to_wire()
+        dns.asyncbackend.set_default_backend("asyncio")
 
-        def setUp(self):
-            self.backend = dns.asyncbackend.set_default_backend("curio")
+    def async_run(self, afunc):
+        return asyncio.run(afunc())
 
-        def async_run(self, afunc):
-            with curio.Kernel() as kernel:
-                return kernel.run(afunc, shutdown=True)
+    async def mock_receive(
+        self,
+        wire1,
+        from1,
+        wire2,
+        from2,
+        ignore_unexpected=True,
+        ignore_errors=True,
+        raise_on_truncation=False,
+        good_r=None,
+    ):
+        if good_r is None:
+            good_r = self.good_r
+        s = MockSock(wire1, from1, wire2, from2)
+        (r, when, _) = await dns.asyncquery.receive_udp(
+            s,
+            ("127.0.0.1", 53),
+            time.time() + 2,
+            ignore_unexpected=ignore_unexpected,
+            ignore_errors=ignore_errors,
+            raise_on_truncation=raise_on_truncation,
+            query=self.q,
+        )
+        self.assertEqual(r, good_r)
 
-except ImportError:
-    pass
+    def test_good_mock(self):
+        async def run():
+            await self.mock_receive(self.good_r_wire, ("127.0.0.1", 53), None, None)
+
+        self.async_run(run)
+
+    def test_bad_address(self):
+        async def run():
+            await self.mock_receive(
+                self.good_r_wire, ("127.0.0.2", 53), self.good_r_wire, ("127.0.0.1", 53)
+            )
+
+        self.async_run(run)
+
+    def test_bad_address_not_ignored(self):
+        async def abad():
+            await self.mock_receive(
+                self.good_r_wire,
+                ("127.0.0.2", 53),
+                self.good_r_wire,
+                ("127.0.0.1", 53),
+                ignore_unexpected=False,
+            )
+
+        def bad():
+            self.async_run(abad)
+
+        self.assertRaises(dns.query.UnexpectedSource, bad)
+
+    def test_not_response_not_ignored_udp_level(self):
+        async def abad():
+            bad_r = dns.message.make_response(self.q)
+            bad_r.id += 1
+            bad_r_wire = bad_r.to_wire()
+            s = MockSock(
+                bad_r_wire, ("127.0.0.1", 53), self.good_r_wire, ("127.0.0.1", 53)
+            )
+            await dns.asyncquery.udp(self.good_r, "127.0.0.1", sock=s)
+
+        def bad():
+            self.async_run(abad)
+
+        self.assertRaises(dns.query.BadResponse, bad)
+
+    def test_bad_id(self):
+        async def run():
+            bad_r = dns.message.make_response(self.q)
+            bad_r.id += 1
+            bad_r_wire = bad_r.to_wire()
+            await self.mock_receive(
+                bad_r_wire, ("127.0.0.1", 53), self.good_r_wire, ("127.0.0.1", 53)
+            )
+
+        self.async_run(run)
+
+    def test_bad_id_not_ignored(self):
+        bad_r = dns.message.make_response(self.q)
+        bad_r.id += 1
+        bad_r_wire = bad_r.to_wire()
+
+        async def abad():
+            (r, wire) = await self.mock_receive(
+                bad_r_wire,
+                ("127.0.0.1", 53),
+                self.good_r_wire,
+                ("127.0.0.1", 53),
+                ignore_errors=False,
+            )
+
+        def bad():
+            self.async_run(abad)
+
+        self.assertRaises(AssertionError, bad)
+
+    def test_bad_wire(self):
+        async def run():
+            bad_r = dns.message.make_response(self.q)
+            bad_r.id += 1
+            bad_r_wire = bad_r.to_wire()
+            await self.mock_receive(
+                bad_r_wire[:10], ("127.0.0.1", 53), self.good_r_wire, ("127.0.0.1", 53)
+            )
+
+        self.async_run(run)
+
+    def test_good_wire_with_truncation_flag_and_no_truncation_raise(self):
+        async def run():
+            tc_r = dns.message.make_response(self.q)
+            tc_r.flags |= dns.flags.TC
+            tc_r_wire = tc_r.to_wire()
+            await self.mock_receive(
+                tc_r_wire, ("127.0.0.1", 53), None, None, good_r=tc_r
+            )
+
+        self.async_run(run)
+
+    def test_good_wire_with_truncation_flag_and_truncation_raise(self):
+        async def agood():
+            tc_r = dns.message.make_response(self.q)
+            tc_r.flags |= dns.flags.TC
+            tc_r_wire = tc_r.to_wire()
+            await self.mock_receive(
+                tc_r_wire, ("127.0.0.1", 53), None, None, raise_on_truncation=True
+            )
+
+        def good():
+            self.async_run(agood)
+
+        self.assertRaises(dns.message.Truncated, good)
+
+    def test_wrong_id_wire_with_truncation_flag_and_no_truncation_raise(self):
+        async def run():
+            bad_r = dns.message.make_response(self.q)
+            bad_r.id += 1
+            bad_r.flags |= dns.flags.TC
+            bad_r_wire = bad_r.to_wire()
+            await self.mock_receive(
+                bad_r_wire, ("127.0.0.1", 53), self.good_r_wire, ("127.0.0.1", 53)
+            )
+
+        self.async_run(run)
+
+    def test_wrong_id_wire_with_truncation_flag_and_truncation_raise(self):
+        async def run():
+            bad_r = dns.message.make_response(self.q)
+            bad_r.id += 1
+            bad_r.flags |= dns.flags.TC
+            bad_r_wire = bad_r.to_wire()
+            await self.mock_receive(
+                bad_r_wire,
+                ("127.0.0.1", 53),
+                self.good_r_wire,
+                ("127.0.0.1", 53),
+                raise_on_truncation=True,
+            )
+
+        self.async_run(run)
+
+    def test_bad_wire_not_ignored(self):
+        bad_r = dns.message.make_response(self.q)
+        bad_r.id += 1
+        bad_r_wire = bad_r.to_wire()
+
+        async def abad():
+            await self.mock_receive(
+                bad_r_wire[:10],
+                ("127.0.0.1", 53),
+                self.good_r_wire,
+                ("127.0.0.1", 53),
+                ignore_errors=False,
+            )
+
+        def bad():
+            self.async_run(abad)
+
+        self.assertRaises(dns.message.ShortHeader, bad)
+
+    def test_trailing_wire(self):
+        async def run():
+            wire = self.good_r_wire + b"abcd"
+            await self.mock_receive(
+                wire, ("127.0.0.1", 53), self.good_r_wire, ("127.0.0.1", 53)
+            )
+
+        self.async_run(run)
+
+    def test_trailing_wire_not_ignored(self):
+        wire = self.good_r_wire + b"abcd"
+
+        async def abad():
+            await self.mock_receive(
+                wire,
+                ("127.0.0.1", 53),
+                self.good_r_wire,
+                ("127.0.0.1", 53),
+                ignore_errors=False,
+            )
+
+        def bad():
+            self.async_run(abad)
+
+        self.assertRaises(dns.message.TrailingJunk, bad)

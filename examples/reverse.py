@@ -16,17 +16,18 @@
 # If this weren't a demo script, there'd be a way of specifying the
 # origin for each zone instead of constructing it from the filename.
 
-import dns.zone
-import dns.ipv4
 import os.path
 import sys
 from typing import Dict, List  # pylint: disable=unused-import
+
+import dns.ipv4
+import dns.zone
 
 reverse_map = {}  # type: Dict[str, List[str]]
 
 for filename in sys.argv[1:]:
     zone = dns.zone.from_file(filename, os.path.basename(filename), relativize=False)
-    for (name, ttl, rdata) in zone.iterate_rdatas("A"):
+    for name, ttl, rdata in zone.iterate_rdatas("A"):
         print(type(rdata))
         try:
             reverse_map[rdata.address].append(name.to_text())

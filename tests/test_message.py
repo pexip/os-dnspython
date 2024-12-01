@@ -16,23 +16,22 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
 # OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-import unittest
 import binascii
+import unittest
 
-import dns.exception
 import dns.edns
+import dns.exception
 import dns.flags
 import dns.message
 import dns.name
 import dns.rdataclass
 import dns.rdatatype
-import dns.rrset
-import dns.tsig
-import dns.update
 import dns.rdtypes.ANY.OPT
 import dns.rdtypes.ANY.TSIG
+import dns.rrset
+import dns.tsig
 import dns.tsigkeyring
-
+import dns.update
 from tests.util import here
 
 query_text = """id 1234
@@ -171,6 +170,20 @@ class MessageTestCase(unittest.TestCase):
         self.assertEqual(len(m2.options), 1)
         self.assertEqual(m2.options[0], opt)
 
+    def test_keeping_wire(self):
+        m = dns.message.from_wire(goodwire)
+        self.assertEqual(m.wire, goodwire)
+        m = dns.message.make_query("example", "A")
+        self.assertEqual(m.wire, None)
+
+    def test_recording_wire(self):
+        m = dns.message.from_wire(goodwire)
+        self.assertEqual(m.wire, goodwire)
+        m.wire = None
+        wire = m.to_wire()
+        self.assertEqual(wire, goodwire)
+        self.assertEqual(m.wire, goodwire)
+
     def test_TooBig(self):
         def bad():
             q = dns.message.from_text(query_text)
@@ -220,6 +233,46 @@ class MessageTestCase(unittest.TestCase):
         self.assertTrue(r.flags & dns.flags.RA != 0)
         self.assertEqual(r.edns, 0)
 
+    def _make_copy_query(self):
+        q = dns.message.make_query("foo", "A")
+        # These are nonsensical, but all we care about is they get copied.
+        q.answer.append(dns.rrset.from_text("foo", 300, "IN", "A", "10.0.0.1"))
+        q.authority.append(dns.rrset.from_text("foo2", 300, "IN", "A", "10.0.0.2"))
+        q.additional.append(dns.rrset.from_text("foo3", 300, "IN", "A", "10.0.0.3"))
+        return q
+
+    def test_MakeResponseCopyNothing(self):
+        q = self._make_copy_query()
+        r = dns.message.make_response(q, copy_mode=dns.message.CopyMode.NOTHING)
+        self.assertEqual(len(r.question), 0)
+        self.assertEqual(len(r.answer), 0)
+        self.assertEqual(len(r.authority), 0)
+        self.assertEqual(len(r.additional), 0)
+
+    def test_MakeResponseCopyDefault(self):
+        q = self._make_copy_query()
+        r = dns.message.make_response(q)
+        self.assertTrue(len(r.question) == 1 and q.question[0] == r.question[0])
+        self.assertEqual(len(r.answer), 0)
+        self.assertEqual(len(r.authority), 0)
+        self.assertEqual(len(r.additional), 0)
+
+    def test_MakeResponseCopyQuestion(self):
+        q = self._make_copy_query()
+        r = dns.message.make_response(q, copy_mode=dns.message.CopyMode.QUESTION)
+        self.assertTrue(len(r.question) == 1 and q.question[0] == r.question[0])
+        self.assertEqual(len(r.answer), 0)
+        self.assertEqual(len(r.authority), 0)
+        self.assertEqual(len(r.additional), 0)
+
+    def test_MakeResponseCopyEverything(self):
+        q = self._make_copy_query()
+        r = dns.message.make_response(q, copy_mode=dns.message.CopyMode.EVERYTHING)
+        self.assertTrue(len(r.question) == 1 and q.question == r.question)
+        self.assertTrue(len(r.answer) == 1 and q.answer == r.answer)
+        self.assertTrue(len(r.authority) == 1 and q.authority == r.authority)
+        self.assertTrue(len(r.additional) == 1 and q.additional == r.additional)
+
     def test_ExtendedRcodeSetting(self):
         m = dns.message.make_query("foo", "A")
         m.set_rcode(4095)
@@ -231,6 +284,18 @@ class MessageTestCase(unittest.TestCase):
     def test_EDNSVersionCoherence(self):
         m = dns.message.make_query("foo", "A")
         m.use_edns(1)
+        self.assertEqual((m.ednsflags >> 16) & 0xFF, 1)
+
+    def test_EDNSVersionCoherenceWithDNSSEC(self):
+        m = dns.message.make_query("foo", "A")
+        m.use_edns(1)
+        m.want_dnssec(True)
+        self.assertEqual((m.ednsflags >> 16) & 0xFF, 1)
+
+    def test_EDNSVersionCoherenceWithoutDNSSEC(self):
+        m = dns.message.make_query("foo", "A")
+        m.use_edns(1)
+        m.want_dnssec(False)
         self.assertEqual((m.ednsflags >> 16) & 0xFF, 1)
 
     def test_SettingNoEDNSOptionsImpliesNoEDNS(self):
@@ -283,6 +348,14 @@ class MessageTestCase(unittest.TestCase):
         rrs1 = a.get_rrset(a.answer, n, dns.rdataclass.IN, dns.rdatatype.TXT)
         rrs2 = a.get_rrset(dns.message.ANSWER, n, dns.rdataclass.IN, dns.rdatatype.TXT)
         self.assertTrue(rrs1 is None)
+        self.assertEqual(rrs1, rrs2)
+
+    def test_GetRRsetStrings(self):
+        a = dns.message.from_text(answer_text)
+        a.index = None
+        n = dns.name.from_text("dnspython.org.")
+        rrs1 = a.get_rrset(a.answer, n, dns.rdataclass.IN, dns.rdatatype.SOA)
+        rrs2 = a.get_rrset("ANSWER", "dnspython.org.", "IN", "SOA")
         self.assertEqual(rrs1, rrs2)
 
     def test_CleanTruncated(self):
@@ -861,6 +934,125 @@ www.dnspython.org. 300 IN A 1.2.3.4
         q2 = dns.message.from_wire(w, keyring=keyring)
         self.assertIsNotNone(q2.tsig)
         self.assertEqual(q, q2)
+
+    def test_response_padding(self):
+        q = dns.message.make_query("www.example", "a", use_edns=0, pad=128)
+        w = q.to_wire()
+        self.assertEqual(len(w), 128)
+        # We need to go read the wire as the padding isn't instantiated in q.
+        pq = dns.message.from_wire(w)
+        r = dns.message.make_response(pq)
+        assert r.pad == 468
+        r = dns.message.make_response(pq, pad=0)
+        assert r.pad == 0
+        r = dns.message.make_response(pq, pad=40)
+        assert r.pad == 40
+        q = dns.message.make_query("www.example", "a", use_edns=0, pad=0)
+        w = q.to_wire()
+        pq = dns.message.from_wire(w)
+        r = dns.message.make_response(pq)
+        assert r.pad == 0
+
+    def test_prefer_truncation_answer(self):
+        q = dns.message.make_query("www.example", "a")
+        rrs = [
+            dns.rrset.from_text("www.example.", 3600, "in", "a", f"1.2.3.{n}")
+            for n in range(32)
+        ]
+        r = dns.message.make_response(q)
+        r.answer.extend(rrs)
+
+        # Normally, we get an exception
+        with self.assertRaises(dns.exception.TooBig):
+            w1 = r.to_wire(max_size=512)
+
+        # With prefer_truncation, we get a truncated response where 1 record
+        # doesn't fit, and TC is set.
+        w2 = r.to_wire(max_size=512, prefer_truncation=True)
+        r2 = dns.message.from_wire(w2, one_rr_per_rrset=True)
+        self.assertNotEqual(r2.flags & dns.flags.TC, 0)
+        self.assertEqual(len(r2.answer), 30)
+
+    def test_prefer_truncation_edns(self):
+        q = dns.message.make_query("www.example", "a", payload=512)
+        rrs = [
+            dns.rrset.from_text("www.example.", 3600, "in", "a", f"1.2.3.{n}")
+            for n in range(32)
+        ]
+        r = dns.message.make_response(q)
+        r.answer.extend(rrs)
+
+        # Normally, we get an exception
+        with self.assertRaises(dns.exception.TooBig):
+            w1 = r.to_wire(max_size=512)
+
+        # With prefer_truncation, we get a truncated response where 2 records
+        # don't fit, and TC is set.
+        w2 = r.to_wire(max_size=512, prefer_truncation=True)
+        r2 = dns.message.from_wire(w2, one_rr_per_rrset=True)
+        self.assertNotEqual(r2.flags & dns.flags.TC, 0)
+        self.assertEqual(len(r2.answer), 29)
+
+    def test_prefer_truncation_additional(self):
+        q = dns.message.make_query("www.example", "a")
+        rrs = [
+            dns.rrset.from_text("www.example.", 3600, "in", "a", f"1.2.3.{n}")
+            for n in range(32)
+        ]
+        r = dns.message.make_response(q)
+        r.additional.extend(rrs)
+
+        # Normally, we get an exception
+        with self.assertRaises(dns.exception.TooBig):
+            w1 = r.to_wire(max_size=512)
+
+        # With prefer_truncation, we get a truncated response where 1 record
+        # doesn't fit, and TC is not set.
+        w2 = r.to_wire(max_size=512, prefer_truncation=True)
+        r2 = dns.message.from_wire(w2, one_rr_per_rrset=True)
+        self.assertEqual(r2.flags & dns.flags.TC, 0)
+        self.assertEqual(len(r2.additional), 30)
+
+    def test_section_count(self):
+        a = dns.message.from_text(answer_text)
+        self.assertEqual(a.section_count(a.question), 1)
+        self.assertEqual(a.section_count(a.answer), 1)
+        self.assertEqual(a.section_count("authority"), 3)
+        self.assertEqual(a.section_count(dns.message.MessageSection.ADDITIONAL), 1)
+
+        a.use_edns()
+        a.use_tsig(dns.tsig.Key("foo.", b"abcd"))
+        self.assertEqual(a.section_count(dns.message.MessageSection.ADDITIONAL), 3)
+
+    def test_section_count_update(self):
+        update = dns.update.Update("example")
+        update.id = 1
+        # These each add 1 record to the prereq section
+        update.present("foo")
+        update.present("foo", "a")
+        update.present("bar", "a", "10.0.0.5")
+        update.absent("blaz2")
+        update.absent("blaz2", "a")
+        # This adds 3 records to the update section
+        update.replace("foo", 300, "a", "10.0.0.1", "10.0.0.2")
+        # These each add 1 record to the update section
+        update.add("bar", dns.rdataset.from_text(1, 1, 300, "10.0.0.3"))
+        update.delete("bar", "a", "10.0.0.4")
+        update.delete("blaz", "a")
+        update.delete("blaz2")
+
+        self.assertEqual(update.section_count(dns.update.UpdateSection.ZONE), 1)
+        self.assertEqual(update.section_count(dns.update.UpdateSection.PREREQ), 5)
+        self.assertEqual(update.section_count(dns.update.UpdateSection.UPDATE), 7)
+
+    def test_extended_errors(self):
+        options = [
+            dns.edns.EDEOption(dns.edns.EDECode.NETWORK_ERROR, "tubes not tubing"),
+            dns.edns.EDEOption(dns.edns.EDECode.OTHER, "catch all code"),
+        ]
+        r = dns.message.make_query("example", "A", use_edns=0, options=options)
+        r.flags |= dns.flags.QR
+        self.assertEqual(r.extended_errors(), options)
 
 
 if __name__ == "__main__":

@@ -2,13 +2,14 @@
 
 import copy
 import json
-import requests
+
+import httpx
 
 import dns.flags
 import dns.message
-import dns.resolver
 import dns.rdataclass
 import dns.rdatatype
+import dns.resolver
 
 # This shows how to convert to/from dnspython's message object and the
 # DNS-over-HTTPS (DoH) JSON form used by Google and Cloudflare, and
@@ -92,7 +93,7 @@ def from_doh_simple(simple, add_qr=False):
 a = dns.resolver.resolve("www.dnspython.org", "a")
 p = to_doh_simple(a.response)
 print(json.dumps(p, indent=4))
-response = requests.get(
+response = httpx.get(
     "https://dns.google/resolve?",
     verify=True,
     params={"name": "www.dnspython.org", "type": 1},

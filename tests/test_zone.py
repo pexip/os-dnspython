@@ -16,11 +16,11 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
 # OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from io import BytesIO, StringIO
 import difflib
 import os
 import sys
 import unittest
+from io import BytesIO, StringIO
 from typing import cast
 
 import dns.exception
@@ -28,14 +28,12 @@ import dns.message
 import dns.name
 import dns.node
 import dns.rdata
-import dns.rdataset
 import dns.rdataclass
+import dns.rdataset
 import dns.rdatatype
 import dns.rrset
 import dns.versioned
 import dns.zone
-import dns.node
-
 from tests.util import here
 
 example_text = """$TTL 3600
@@ -56,6 +54,14 @@ example_text_output = """@ 3600 IN SOA foo bar 1 2 3 4 5
 bar.foo 300 IN MX 0 blaz.foo
 ns1 3600 IN A 10.0.0.1
 ns2 3600 IN A 10.0.0.2
+"""
+
+example_text_output_class_before_ttl = """@ IN 3600 SOA foo bar 1 2 3 4 5
+@ 3600 NS ns1 ; no class
+@ NS ns2 ; no class or TTL, TTL inferred from prior record
+bar.foo IN 300 MX 0 blaz.foo
+ns1 IN 3600 A 10.0.0.1
+ns2 IN 3600 A 10.0.0.2
 """
 
 example_generate = """@ 3600 IN SOA foo bar 1 2 3 4 5
@@ -305,7 +311,7 @@ def make_xfr(zone):
         soa_name = zone.origin
     soa = zone.find_rdataset(soa_name, "SOA")
     add_rdataset(msg, soa_name, soa)
-    for (name, rds) in zone.iterate_rdatasets():
+    for name, rds in zone.iterate_rdatasets():
         if rds.rdtype == dns.rdatatype.SOA:
             continue
         add_rdataset(msg, name, rds)
@@ -471,11 +477,10 @@ class ZoneTestCase(unittest.TestCase):
     def testGenerate(self):
         z = dns.zone.from_text(example_generate, "example.", relativize=True)
         f = StringIO()
-        names = list(z.nodes.keys())
-        for n in names:
-            f.write(z[n].to_text(n))
-            f.write("\n")
-        self.assertEqual(f.getvalue(), example_generate_output)
+        expected = dns.zone.from_text(
+            example_generate_output, "example.", relativize=True
+        )
+        self.assertEqual(z, expected)
 
     def testTorture1(self):
         #
@@ -500,6 +505,13 @@ class ZoneTestCase(unittest.TestCase):
 
     def testEqual(self):
         z1 = dns.zone.from_text(example_text, "example.", relativize=True)
+        z2 = dns.zone.from_text(example_text_output, "example.", relativize=True)
+        self.assertEqual(z1, z2)
+
+    def testEqualClassBeforeTTL(self):
+        z1 = dns.zone.from_text(
+            example_text_output_class_before_ttl, "example.", relativize=True
+        )
         z2 = dns.zone.from_text(example_text_output, "example.", relativize=True)
         self.assertEqual(z1, z2)
 
@@ -1142,6 +1154,21 @@ class ZoneTestCase(unittest.TestCase):
         z = dns.zone.from_text(example_text, "example.", relativize=False)
         with self.assertRaises(KeyError):
             self.assertTrue(1 in z)
+
+    def testRelativeNameLengthChecks(self):
+        z = dns.zone.from_text(example_cname, "example.", relativize=True)
+        rds = dns.rdataset.from_text("in", "a", 300, "10.0.0.1")
+        # This name is 246 bytes long, which along with the 8 bytes for label "example"
+        # and 1 byte for the root name is 246 + 8 + 1 = 255 bytes long, the maximum
+        # legal wire format name length.
+        ok_long_relative = dns.name.Name(["a" * 63, "a" * 63, "a" * 63, "a" * 53])
+        z.replace_rdataset(ok_long_relative, rds)
+        self.assertEqual(z.find_rdataset(ok_long_relative, "A"), rds)
+        # This is the longest possible relative name and won't work in any zone
+        # as there is no space left for any origin labels.
+        too_long_relative = dns.name.Name(["a" * 63, "a" * 63, "a" * 63, "a" * 62])
+        with self.assertRaises(KeyError):
+            z.replace_rdataset(too_long_relative, rds)
 
 
 class VersionedZoneTestCase(unittest.TestCase):

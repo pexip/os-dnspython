@@ -15,21 +15,24 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
 # OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from io import StringIO
 import selectors
-import sys
 import socket
+import sys
 import time
 import unittest
-import pytest
+from io import StringIO
 from unittest.mock import patch
+
+import pytest
 
 import dns.e164
 import dns.message
 import dns.name
+import dns.quic
 import dns.rdataclass
 import dns.rdatatype
 import dns.resolver
+import dns.reversename
 import dns.tsig
 import dns.tsigkeyring
 import tests.util
@@ -58,6 +61,10 @@ try:
         _systemd_resolved_present = True
 except Exception:
     pass
+
+# Docker too!  It not only has problems with dangling CNAME, but also says NXDOMAIN when
+# it should say no error no data.
+_is_docker = tests.util.is_docker()
 
 
 resolv_conf = """
@@ -664,6 +671,35 @@ class LiveResolverTests(unittest.TestCase):
         dnsgoogle = dns.name.from_text("dns.google.")
         self.assertEqual(answer[0].target, dnsgoogle)
 
+    def testResolveName(self):
+        answers = dns.resolver.resolve_name("dns.google.")
+        seen = set(answers.addresses())
+        self.assertEqual(len(seen), 4)
+        self.assertIn("8.8.8.8", seen)
+        self.assertIn("8.8.4.4", seen)
+        self.assertIn("2001:4860:4860::8844", seen)
+        self.assertIn("2001:4860:4860::8888", seen)
+
+        answers = dns.resolver.resolve_name("dns.google.", socket.AF_INET)
+        seen = set(answers.addresses())
+        self.assertEqual(len(seen), 2)
+        self.assertIn("8.8.8.8", seen)
+        self.assertIn("8.8.4.4", seen)
+
+        answers = dns.resolver.resolve_name("dns.google.", socket.AF_INET6)
+        seen = set(answers.addresses())
+        self.assertEqual(len(seen), 2)
+        self.assertIn("2001:4860:4860::8844", seen)
+        self.assertIn("2001:4860:4860::8888", seen)
+
+        with self.assertRaises(dns.resolver.NXDOMAIN):
+            dns.resolver.resolve_name("nxdomain.dnspython.org")
+
+        if not _is_docker:
+            # We skip docker as it says NXDOMAIN!
+            with self.assertRaises(dns.resolver.NoAnswer):
+                dns.resolver.resolve_name(dns.reversename.from_address("8.8.8.8"))
+
     @patch.object(dns.message.Message, "use_edns")
     def testResolveEdnsOptions(self, message_use_edns_mock):
         resolver = dns.resolver.Resolver()
@@ -717,6 +753,43 @@ class LiveResolverTests(unittest.TestCase):
         answer2 = res.resolve("dns.google.", "A")
         self.assertIs(answer2, answer1)
 
+    @unittest.skipIf(not tests.util.have_ipv4(), "IPv4 not reachable")
+    def testTLSNameserver(self):
+        res = dns.resolver.Resolver(configure=False)
+        res.nameservers = [dns.nameserver.DoTNameserver("8.8.8.8", 853)]
+        answer = res.resolve("dns.google.", "A")
+        seen = set([rdata.address for rdata in answer])
+        self.assertIn("8.8.8.8", seen)
+        self.assertIn("8.8.4.4", seen)
+
+    @unittest.skipIf(
+        not (tests.util.have_ipv4() and dns.quic.have_quic),
+        "IPv4 not reachable or QUIC not available",
+    )
+    def testQuicNameserver(self):
+        res = dns.resolver.Resolver(configure=False)
+        res.nameservers = [dns.nameserver.DoQNameserver("94.140.14.14", 784)]
+        answer = res.resolve("dns.adguard.com.", "A")
+        seen = set([rdata.address for rdata in answer])
+        self.assertIn("94.140.14.14", seen)
+        self.assertIn("94.140.15.15", seen)
+
+    @unittest.skipIf(not tests.util.have_ipv4(), "IPv4 not reachable")
+    def testResolveAtAddress(self):
+        answer = dns.resolver.resolve_at("8.8.8.8", "dns.google.", "A")
+        seen = set([rdata.address for rdata in answer])
+        self.assertIn("8.8.8.8", seen)
+        self.assertIn("8.8.4.4", seen)
+
+    @unittest.skipIf(not tests.util.have_ipv4(), "IPv4 not reachable")
+    def testResolveAtName(self):
+        answer = dns.resolver.resolve_at(
+            "dns.google", "dns.google.", "A", family=socket.AF_INET
+        )
+        seen = set([rdata.address for rdata in answer])
+        self.assertIn("8.8.8.8", seen)
+        self.assertIn("8.8.4.4", seen)
+
     def testCanonicalNameNoCNAME(self):
         cname = dns.name.from_text("www.google.com")
         self.assertEqual(dns.resolver.canonical_name("www.google.com"), cname)
@@ -726,7 +799,9 @@ class LiveResolverTests(unittest.TestCase):
         cname = dns.name.from_text("dmfrjf4ips8xa.cloudfront.net")
         self.assertEqual(dns.resolver.canonical_name(name), cname)
 
-    @unittest.skipIf(_systemd_resolved_present, "systemd-resolved in use")
+    @unittest.skipIf(
+        _systemd_resolved_present or _is_docker, "systemd-resolved or docker in use"
+    )
     def testCanonicalNameDangling(self):
         name = dns.name.from_text("dangling-cname.dnspython.org")
         cname = dns.name.from_text("dangling-target.dnspython.org")
@@ -742,37 +817,7 @@ class LiveResolverTests(unittest.TestCase):
                 res.nameservers = [ns]
 
 
-class PollingMonkeyPatchMixin(object):
-    def setUp(self):
-        self.__native_selector_class = dns.query._selector_class
-        dns.query._set_selector_class(self.selector_class())
-
-        unittest.TestCase.setUp(self)
-
-    def tearDown(self):
-        dns.query._set_selector_class(self.__native_selector_class)
-
-        unittest.TestCase.tearDown(self)
-
-
-class SelectResolverTestCase(
-    PollingMonkeyPatchMixin, LiveResolverTests, unittest.TestCase
-):
-    def selector_class(self):
-        return selectors.SelectSelector
-
-
-if hasattr(selectors, "PollSelector"):
-
-    class PollResolverTestCase(
-        PollingMonkeyPatchMixin, LiveResolverTests, unittest.TestCase
-    ):
-        def selector_class(self):
-            return selectors.PollSelector
-
-
 class NXDOMAINExceptionTestCase(unittest.TestCase):
-
     # pylint: disable=broad-except
 
     def test_nxdomain_compatible(self):
@@ -951,6 +996,7 @@ class ResolverNameserverValidTypeTestCase(unittest.TestCase):
             "1.2.3.4",
             1234,
             (1, 2, 3, 4),
+            (),
             {"invalid": "nameserver"},
         ]
         for invalid_nameserver in invalid_nameservers:
@@ -1123,7 +1169,7 @@ def testResolverTimeout():
             errors = e.kwargs["errors"]
             assert len(errors) > 1
             for error in errors:
-                assert error[0] == na.udp_address[0]  # address
+                assert str(error[0]) == f"Do53:{na.udp_address[0]}@{na.udp_address[1]}"
                 assert not error[1]  # not TCP
                 assert error[2] == na.udp_address[1]  # port
                 assert isinstance(error[3], dns.exception.Timeout)  # exception
@@ -1145,7 +1191,7 @@ def testResolverNoNameservers():
             errors = e.kwargs["errors"]
             assert len(errors) == 1
             for error in errors:
-                assert error[0] == na.udp_address[0]  # address
+                assert error[0] == f"Do53:{na.udp_address[0]}@{na.udp_address[1]}"
                 assert not error[1]  # not TCP
                 assert error[2] == na.udp_address[1]  # port
                 assert error[3] == "FORMERR"

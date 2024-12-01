@@ -6,8 +6,8 @@ import pytest
 
 import dns.name
 import dns.rdataclass
-import dns.rdatatype
 import dns.rdataset
+import dns.rdatatype
 import dns.rrset
 import dns.transaction
 import dns.versioned
@@ -225,6 +225,41 @@ def test_cannot_store_non_origin_soa(db):
         with db.writer() as txn:
             rrset = dns.rrset.from_text("foo", 300, "in", "SOA", ". . 1 2 3 4 5")
             txn.add(rrset)
+
+
+def test_checks(db):
+    called = set()
+    with db.writer() as txn:
+        txn.check_put_rdataset(lambda t, n, r: called.add("put_rdataset"))
+        txn.check_delete_rdataset(lambda t, n, r, c: called.add("delete_rdataset"))
+        txn.check_delete_name(lambda t, n: called.add("delete_name"))
+        rrset = dns.rrset.from_text("foo", 300, "in", "A", "10.0.0.1", "10.0.0.2")
+        txn.add(rrset)
+        rrset = dns.rrset.from_text("foo", 300, "in", "AAAA", "::1")
+        txn.add(rrset)
+        assert "put_rdataset" in called
+        rrset = dns.rrset.from_text("foo", 300, "in", "txt", "foo")
+        txn.add(rrset)
+        called.clear()
+        txn.delete("foo", "txt")
+        assert "delete_rdataset" in called
+        called.clear()
+        rdata = dns.rdata.from_text("in", "a", "10.0.0.2")
+        txn.delete("foo", rdata)
+        # we get put here as we're storing an updated rrset, not deleting it
+        assert "put_rdataset" in called
+        called.clear()
+        rdata = dns.rdata.from_text("in", "a", "10.0.0.1")
+        # now we are deleting
+        txn.delete("foo", rdata)
+        assert "delete_rdataset" in called
+        # non-match calls nothing
+        called.clear()
+        txn.delete("foo", "rrsig", "a")
+        assert len(called) == 0
+        # delete the name
+        txn.delete("foo")
+        assert "delete_name" in called
 
 
 example_text = """$TTL 3600
@@ -462,6 +497,11 @@ def test_update_serial(zone):
         txn.update_serial(0, False)
     rdataset = zone.find_rdataset("@", "soa")
     assert rdataset[0].serial == 1
+    # specifying the name explicitly works
+    with zone.writer() as txn:
+        txn.update_serial(1, True, "@")
+    rdataset = zone.find_rdataset("@", "soa")
+    assert rdataset[0].serial == 2
     with pytest.raises(KeyError):
         with zone.writer() as txn:
             txn.update_serial(name=dns.name.from_text("unknown", None))
@@ -499,12 +539,23 @@ def test_zone_ooz_name(zone):
 
 def test_zone_iteration(zone):
     expected = {}
-    for (name, rdataset) in zone.iterate_rdatasets():
+    for name, rdataset in zone.iterate_rdatasets():
         expected[(name, rdataset.rdtype, rdataset.covers)] = rdataset
     with zone.writer() as txn:
-        actual = {}
-        for (name, rdataset) in txn:
-            actual[(name, rdataset.rdtype, rdataset.covers)] = rdataset
+        actual1 = {}
+        for name, rdataset in txn:
+            actual1[(name, rdataset.rdtype, rdataset.covers)] = rdataset
+        actual2 = {}
+        for name, rdataset in txn.iterate_rdatasets():
+            actual2[(name, rdataset.rdtype, rdataset.covers)] = rdataset
+    assert actual1 == expected
+    assert actual2 == expected
+
+
+def test_zone_name_iteration(zone):
+    expected = list(zone.keys())
+    with zone.writer() as txn:
+        actual = list(txn.iterate_names())
     assert actual == expected
 
 
@@ -515,7 +566,7 @@ def test_iteration_in_replacement_txn(zone):
     with zone.writer(True) as txn:
         txn.replace(dns.name.empty, rds)
         actual = {}
-        for (name, rdataset) in txn:
+        for name, rdataset in txn:
             actual[(name, rdataset.rdtype, rdataset.covers)] = rdataset
     assert actual == expected
 
@@ -528,7 +579,7 @@ def test_replacement_commit(zone):
         txn.replace(dns.name.empty, rds)
     with zone.reader() as txn:
         actual = {}
-        for (name, rdataset) in txn:
+        for name, rdataset in txn:
             actual[(name, rdataset.rdtype, rdataset.covers)] = rdataset
     assert actual == expected
 
@@ -592,7 +643,7 @@ def test_vzone_multiple_versions(vzone):
 def _dump(zone):
     for v in zone._versions:
         print("VERSION", v.id)
-        for (name, n) in v.nodes.items():
+        for name, n in v.nodes.items():
             for rdataset in n:
                 print(rdataset.to_text(name))
 
