@@ -22,26 +22,24 @@ import pickle
 import struct
 import unittest
 
-import dns.wire
 import dns.exception
 import dns.name
 import dns.rdata
 import dns.rdataclass
 import dns.rdataset
 import dns.rdatatype
-from dns.rdtypes.ANY.OPT import OPT
-from dns.rdtypes.ANY.LOC import LOC
-from dns.rdtypes.ANY.GPOS import GPOS
 import dns.rdtypes.ANY.RRSIG
 import dns.rdtypes.IN.APL
 import dns.rdtypes.util
 import dns.tokenizer
 import dns.ttl
 import dns.wire
-
+import tests.md_module
 import tests.stxt_module
 import tests.ttxt_module
-import tests.md_module
+from dns.rdtypes.ANY.GPOS import GPOS
+from dns.rdtypes.ANY.LOC import LOC
+from dns.rdtypes.ANY.OPT import OPT
 from tests.util import here
 
 
@@ -586,13 +584,12 @@ class RdataTestCase(unittest.TestCase):
         rd = dns.rdata.from_text("in", "rrsig", text)
         self.assertEqual(repr(rd), "<DNS IN RRSIG(NSEC) rdata: " + text + ">")
 
-    def test_bad_registration_implementing_known_type_with_wrong_name(self):
-        # Try to register an implementation at the MG codepoint that isn't
-        # called "MG"
+    def test_registration_implementing_known_and_implemented_type(self):
+        # Try to register an implementation at the A codepoint.
         with self.assertRaises(dns.rdata.RdatatypeExists):
-            dns.rdata.register_type(None, dns.rdatatype.MG, "NOTMG")
+            dns.rdata.register_type(None, dns.rdatatype.A, "ANYTHING")
 
-    def test_registration_implementing_known_type_with_right_name(self):
+    def test_registration_of_known_but_unimplmented_type(self):
         # Try to register an implementation at the MD codepoint
         dns.rdata.register_type(tests.md_module, dns.rdatatype.MD, "MD")
         rd = dns.rdata.from_text("in", "md", "foo.")
@@ -675,6 +672,10 @@ class RdataTestCase(unittest.TestCase):
         with self.assertRaises(dns.exception.SyntaxError):
             dns.rdata.from_text("in", "txt", "")
 
+    def test_empty_TXT_wire(self):
+        with self.assertRaises(dns.exception.FormError):
+            dns.rdata.from_wire(dns.rdataclass.IN, dns.rdatatype.TXT, b"", 0, 0)
+
     def test_too_long_TXT(self):
         # hit too long
         with self.assertRaises(dns.exception.SyntaxError):
@@ -739,6 +740,11 @@ class RdataTestCase(unittest.TestCase):
                     new_text = rr.to_text(chunksize=chunksize)
                     self.assertEqual(output, new_text)
 
+    def test_simple_ordered_compare_when_equal(self):
+        r1 = dns.rdata.from_text("IN", "AAAA", "::1")
+        r2 = dns.rdata.from_text("IN", "AAAA", "0000:0000::1")
+        self.assertFalse(r1 < r2)
+
     def test_relative_vs_absolute_compare_unstrict(self):
         try:
             saved = dns.rdata._allow_relative_comparisons
@@ -786,15 +792,35 @@ class RdataTestCase(unittest.TestCase):
         finally:
             dns.rdata._allow_relative_comparisons = saved
 
-    def test_absolute_vs_absolute_compare(self):
-        r1 = dns.rdata.from_text(dns.rdataclass.IN, dns.rdatatype.NS, "www.")
-        r2 = dns.rdata.from_text(dns.rdataclass.IN, dns.rdatatype.NS, "xxx.")
-        self.assertFalse(r1 == r2)
-        self.assertTrue(r1 != r2)
-        self.assertTrue(r1 < r2)
-        self.assertTrue(r1 <= r2)
-        self.assertFalse(r1 > r2)
-        self.assertFalse(r1 >= r2)
+    def test_absolute_vs_absolute_compare_unstrict(self):
+        try:
+            saved = dns.rdata._allow_relative_comparisons
+            dns.rdata._allow_relative_comparisons = True
+            r1 = dns.rdata.from_text(dns.rdataclass.IN, dns.rdatatype.NS, "www.")
+            r2 = dns.rdata.from_text(dns.rdataclass.IN, dns.rdatatype.NS, "xxx.")
+            self.assertFalse(r1 == r2)
+            self.assertTrue(r1 != r2)
+            self.assertTrue(r1 < r2)
+            self.assertTrue(r1 <= r2)
+            self.assertFalse(r1 > r2)
+            self.assertFalse(r1 >= r2)
+        finally:
+            dns.rdata._allow_relative_comparisons = saved
+
+    def test_absolute_vs_absolute_compare_strict(self):
+        try:
+            saved = dns.rdata._allow_relative_comparisons
+            dns.rdata._allow_relative_comparisons = False
+            r1 = dns.rdata.from_text(dns.rdataclass.IN, dns.rdatatype.NS, "www.")
+            r2 = dns.rdata.from_text(dns.rdataclass.IN, dns.rdatatype.NS, "xxx.")
+            self.assertFalse(r1 == r2)
+            self.assertTrue(r1 != r2)
+            self.assertTrue(r1 < r2)
+            self.assertTrue(r1 <= r2)
+            self.assertFalse(r1 > r2)
+            self.assertFalse(r1 >= r2)
+        finally:
+            dns.rdata._allow_relative_comparisons = saved
 
     def test_relative_vs_relative_compare_unstrict(self):
         try:
@@ -838,6 +864,20 @@ class RdataTestCase(unittest.TestCase):
             self.assertRaises(dns.rdata.NoRelativeRdataOrdering, bad4)
         finally:
             dns.rdata._allow_relative_comparisons = saved
+
+    def test_nsec3_next_name(self):
+        rdata = dns.rdata.from_text(
+            "in",
+            "nsec3",
+            "1 1 0 - CK0Q2D6NI4I7EQH8NA30NS61O48UL8G5 NS SOA RRSIG DNSKEY NSEC3PARAM",
+        )
+        origin = dns.name.from_text("com")
+        expected_rel = dns.name.from_text(
+            "ck0q2d6ni4i7eqh8na30ns61o48ul8g5", origin=None
+        )
+        expected_abs = dns.name.from_text("ck0q2d6ni4i7eqh8na30ns61o48ul8g5.com.")
+        self.assertEqual(rdata.next_name(), expected_rel)
+        self.assertEqual(rdata.next_name(origin), expected_abs)
 
 
 class UtilTestCase(unittest.TestCase):
