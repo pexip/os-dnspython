@@ -1,14 +1,15 @@
 Tests: py3
 Depends: ca-certificates,
+         python3-aioquic,
          python3-all,
          python3-cryptography,
          python3-h2,
+         python3-httpcore,
          python3-httpx,
          python3-idna,
          python3-pytest,
          python3-requests,
          python3-requests-toolbelt,
-         python3-sniffio,
          python3-trio,
          @
-Restrictions: allow-stderr
+Restrictions: allow-stderr, needs-internet

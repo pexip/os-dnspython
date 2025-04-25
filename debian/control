@@ -8,37 +8,35 @@ XSBC-Pexip-Original-Uploaders: Robert S. Edmonds <edmonds@debian.org>,
            Matthew Grant <matthewgrant5@gmail.com>
 Build-Depends: ca-certificates,
                debhelper-compat (= 13),
-               dh-python,
+               dh-sequence-python3,
                netbase,
                pybuild-plugin-pyproject,
+               python3-aioquic,
                python3-all,
-               python3-cryptography,
+               python3-cryptography (>=43),
                python3-h2,
+               python3-hatchling (>=1.21.0),
+               python3-httpcore,
                python3-httpx,
-               python3-poetry-core,
                python3-pytest,
-               python3-setuptools
 Homepage: https://www.dnspython.org
 Rules-Requires-Root: no
-Standards-Version: 4.6.2
+Standards-Version: 4.7.0
 Vcs-Git: https://salsa.debian.org/python-team/packages/dnspython.git
 Vcs-Browser: https://salsa.debian.org/python-team/packages/dnspython
 XS-Pexip-Upstream: http://deb.debian.org/debian/ trixie
 
 Package: python3-dnspython
 Architecture: all
+Multi-Arch: foreign
 Depends: netbase, ${misc:Depends}, ${python3:Depends}
 Recommends: ca-certificates,
-            python3-cryptography,
+            python3-cryptography (>=43),
             python3-h2,
+            python3-httpcore (>=0.17.3),
             python3-httpx,
-            python3-idna,
-            python3-requests,
-            python3-requests-toolbelt
-Suggests: python3-sniffio, python3-trio, python3-aioquic
-Breaks: dkimpy-milter (<< 1.2.2),
-        python3-dkim (<< 1.0.5),
-        python3-spf (<< 2.0.14-2~)
+            python3-idna (>=3.7),
+Suggests: python3-trio, python3-aioquic
 Description: DNS toolkit for Python 3
  dnspython is a DNS toolkit for Python. It supports almost all record types. It
  can be used for queries, zone transfers, and dynamic updates. It supports TSIG
@@ -46,12 +44,11 @@ Description: DNS toolkit for Python 3
  .
  With recommended additional dependencies installed it also support DNS Over
  HTTPS (DOH), DNSSEC, and non-ascii (IDNA) DNS operations.  It can support
- asynchronous if python3-sniffio and python3-trio are installed, but this is
- not the default.
+ asynchronous if python3-trio is installed, but this is not the default.  DNS
+ Over QUIC (DOQ) is supported if python3-aioquic is installed, also not the
+ default.
  .
  dnspython provides both high and low level access to DNS. The high level
  classes perform queries for data of a given name, type, and class, and return
  an answer set. The low level classes allow direct manipulation of DNS zones,
  messages, names, and records.
- .
- This is the Python 3 version.

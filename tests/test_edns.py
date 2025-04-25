@@ -19,7 +19,6 @@
 import operator
 import struct
 import unittest
-
 from io import BytesIO
 
 import dns.edns
@@ -142,7 +141,7 @@ class OptionTestCase(unittest.TestCase):
         opt.to_wire(io)
         data = io.getvalue()
         self.assertEqual(data, b"\x00\x03")
-        self.assertEqual(str(opt), "EDE 3")
+        self.assertEqual(str(opt), "EDE 3 (Stale Answer)")
         # with text
         opt = dns.edns.EDEOption(16, "test")
         io = BytesIO()
@@ -200,6 +199,72 @@ class OptionTestCase(unittest.TestCase):
         self.assertTrue(o1 != o2)
         self.assertFalse(o1 == 123)
         self.assertTrue(o1 != 123)
+
+    def testNSIDOption(self):
+        opt = dns.edns.NSIDOption(b"testing")
+        io = BytesIO()
+        opt.to_wire(io)
+        data = io.getvalue()
+        self.assertEqual(data, b"testing")
+        self.assertEqual(str(opt), "NSID testing")
+        opt = dns.edns.NSIDOption(b"\xfe\xff")
+        io = BytesIO()
+        opt.to_wire(io)
+        data = io.getvalue()
+        self.assertEqual(data, b"\xfe\xff")
+        self.assertEqual(str(opt), "NSID feff")
+        o = dns.edns.option_from_wire(dns.edns.OptionType.NSID, data, 0, len(data))
+        self.assertEqual(o.nsid, b"\xfe\xff")
+
+    def testCookieOption(self):
+        opt = dns.edns.CookieOption(b"12345678", b"")
+        io = BytesIO()
+        opt.to_wire(io)
+        data = io.getvalue()
+        self.assertEqual(data, b"12345678")
+        self.assertEqual(str(opt), "COOKIE 3132333435363738")
+        opt = dns.edns.CookieOption(b"12345678", b"abcdefgh")
+        data = opt.to_wire()
+        self.assertEqual(data, b"12345678abcdefgh")
+        self.assertEqual(str(opt), "COOKIE 31323334353637386162636465666768")
+        # maximal server
+        opt = dns.edns.CookieOption(b"12345678", b"abcdefghabcdefghabcdefghabcdefgh")
+        io = BytesIO()
+        opt.to_wire(io)
+        data = io.getvalue()
+        self.assertEqual(data, b"12345678abcdefghabcdefghabcdefghabcdefgh")
+        # from wire
+        opt2 = dns.edns.option_from_wire(dns.edns.OptionType.COOKIE, data, 0, len(data))
+        self.assertEqual(opt.client, opt2.client)
+        self.assertEqual(opt.server, opt2.server)
+        # client too short
+        with self.assertRaises(ValueError):
+            opt = dns.edns.CookieOption(b"1234567", b"")
+        # client too long
+        with self.assertRaises(ValueError):
+            opt = dns.edns.CookieOption(b"123456789", b"")
+        # server too short
+        with self.assertRaises(ValueError):
+            opt = dns.edns.CookieOption(b"12345678", b"a")
+        # server too long
+        with self.assertRaises(ValueError):
+            opt = dns.edns.CookieOption(
+                b"12345678", b"abcdefghabcdefghabcdefghabcdefghi"
+            )
+
+    def testReportChannelOption(self):
+        agent_domain = dns.name.from_text("agent.example.")
+        expected_wire = b"\x05agent\x07example\x00"
+        opt = dns.edns.ReportChannelOption(agent_domain)
+        io = BytesIO()
+        opt.to_wire(io)
+        data = io.getvalue()
+        self.assertEqual(data, expected_wire)
+        self.assertEqual(str(opt), "REPORTCHANNEL agent.example.")
+        opt2 = dns.edns.option_from_wire(
+            dns.edns.OptionType.REPORTCHANNEL, expected_wire, 0, len(expected_wire)
+        )
+        self.assertEqual(opt2.agent_domain, agent_domain)
 
     def test_option_registration(self):
         U32OptionType = 9999
