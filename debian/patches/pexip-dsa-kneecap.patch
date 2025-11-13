@@ -9,3 +9,13 @@
          octets = 64 + dsa_t * 8
          res = struct.pack("!B", dsa_t)
          res += pn.parameter_numbers.q.to_bytes(20, "big")
+--- a/tests/test_dnssecalgs.py
++++ b/tests/test_dnssecalgs.py
+@@ -85,6 +85,7 @@
+         self._test_dnssec_alg(PrivateRSASHA256, 2048)
+         self._test_dnssec_alg(PrivateRSASHA512, 2048)
+ 
++    @unittest.skip("RFC8624 3.1: use of DSA is MUST NOT")
+     def test_dsa(self):
+         self._test_dnssec_alg(PrivateDSA, 1024)
+         self._test_dnssec_alg(PrivateDSANSEC3SHA1, 1024)

@@ -1,3 +1,9 @@
+dnspython (2.7.0-1+pexip25u2) pexip-trixie; urgency=medium
+
+  * DNS SEC: re-skip DSA test due to RFC 8624 3.1 and newer OpenSSL versions
+
+ -- Huw Jones <huw@pexip.com>  Thu, 13 Nov 2025 16:37:51 +0000
+
 dnspython (2.7.0-1+pexip25u1) pexip-trixie; urgency=medium
 
   * Initial trixie build
