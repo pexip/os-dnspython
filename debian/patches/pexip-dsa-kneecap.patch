@@ -1,3 +1,5 @@
+Remove use of DSA as-per RFC8624
+
 --- dnspython.orig/dns/dnssecalgs/dsa.py
 +++ dnspython/dns/dnssecalgs/dsa.py
 @@ -29,6 +29,8 @@ class PublicDSA(CryptographyPublicKey):
